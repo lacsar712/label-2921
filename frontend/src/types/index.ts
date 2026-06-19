@@ -148,3 +148,128 @@ export interface Reservation {
   aheadCount?: number;
   statusLogs?: ReservationStatusLog[];
 }
+
+export type ZoneType = 'SILENT' | 'DISCUSSION' | 'GENERAL' | 'COMPUTER';
+export type SeatStatus = 'AVAILABLE' | 'BANNED';
+export type SeatReservationStatus = 'BOOKED' | 'CANCELLED' | 'CHECKED_IN' | 'NO_SHOW' | 'RELEASED';
+export type TimeSlot = 'MORNING_1' | 'MORNING_2' | 'AFTERNOON_1' | 'AFTERNOON_2' | 'EVENING_1' | 'EVENING_2';
+
+export interface TimeSlotInfo {
+  label: string;
+  start: string;
+  end: string;
+}
+
+export interface ReadingRoom {
+  id: number;
+  name: string;
+  description?: string;
+  location?: string;
+  openTime?: string;
+  closeTime?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  zones?: ReadingZone[];
+}
+
+export interface ReadingZone {
+  id: number;
+  name: string;
+  type: ZoneType;
+  description?: string;
+  readingRoomId: number;
+  readingRoom?: ReadingRoom;
+  seats?: Seat[];
+  createdAt: string;
+  updatedAt: string;
+  _count?: { seats: number };
+}
+
+export interface Seat {
+  id: number;
+  seatNumber: string;
+  zoneId: number;
+  zone?: ReadingZone;
+  hasPowerOutlet: boolean;
+  isWindowSide: boolean;
+  status: SeatStatus;
+  banReason?: string;
+  createdAt: string;
+  updatedAt: string;
+  reservedSlots?: TimeSlot[];
+}
+
+export interface SeatReservation {
+  id: number;
+  seatId: number;
+  seat: Seat & {
+    zone: ReadingZone & {
+      readingRoom: ReadingRoom;
+    };
+  };
+  borrowerId: number;
+  borrower: {
+    id: number;
+    name: string;
+    phone?: string;
+    email?: string;
+  };
+  date: string;
+  timeSlot: TimeSlot;
+  status: SeatReservationStatus;
+  checkedInAt?: string;
+  cancelledAt?: string;
+  noShowAt?: string;
+  releasedAt?: string;
+  operatorId?: number;
+  operator?: {
+    id: number;
+    username: string;
+  };
+  remark?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SeatBoardSlot {
+  zone: { id: number; name: string; type: ZoneType };
+  seats: Array<{
+    seat: Seat;
+    slots: Record<string, SeatReservation | null>;
+  }>;
+}
+
+export interface SeatBoardData {
+  date: string;
+  timeSlots: TimeSlot[];
+  timeSlotLabels: Record<TimeSlot, TimeSlotInfo>;
+  zones: SeatBoardSlot[];
+}
+
+export interface SlotStats {
+  total: number;
+  booked: number;
+  checkedIn: number;
+  utilization: number;
+}
+
+export interface ReadingRoomStats {
+  date: string;
+  totalSeats: number;
+  availableSeats: number;
+  bannedSeats: number;
+  totalReservations: number;
+  statusCounts: Record<SeatReservationStatus, number>;
+  slotStats: Record<TimeSlot, SlotStats>;
+  timeSlotLabels: Record<TimeSlot, TimeSlotInfo>;
+}
+
+export interface Borrower {
+  id: number;
+  name: string;
+  phone?: string;
+  email?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}

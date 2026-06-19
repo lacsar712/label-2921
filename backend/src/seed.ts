@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Role } from '@prisma/client';
+import { Role, ZoneType, SeatStatus, TimeSlot, SeatReservationStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from './utils/prisma';
 
@@ -129,6 +129,124 @@ async function main() {
     await prisma.borrowRecord.createMany({
       data: borrowRecords,
     });
+  }
+
+  console.log('Generating reading rooms, zones, and seats...');
+  const existingRooms = await prisma.readingRoom.count();
+  if (existingRooms === 0) {
+    const roomsData = [
+      { name: '第一阅览室', description: '综合阅览室，适合各类阅读', location: '图书馆1楼东侧', openTime: '08:00', closeTime: '21:30' },
+      { name: '第二阅览室', description: '安静阅览室，专注学习', location: '图书馆2楼西侧', openTime: '08:00', closeTime: '22:00' },
+      { name: '电子阅览室', description: '配备电脑设备，支持数字资源访问', location: '图书馆3楼', openTime: '09:00', closeTime: '21:00' },
+    ];
+
+    for (const roomData of roomsData) {
+      const room = await prisma.readingRoom.create({ data: roomData });
+
+      const zonesData = room.name === '电子阅览室'
+        ? [
+            { name: 'A区', type: ZoneType.COMPUTER, description: '电脑区' },
+            { name: 'B区', type: ZoneType.GENERAL, description: '普通座位区' },
+          ]
+        : [
+            { name: 'A区', type: ZoneType.SILENT, description: '静音区' },
+            { name: 'B区', type: ZoneType.GENERAL, description: '普通区' },
+            { name: 'C区', type: ZoneType.DISCUSSION, description: '讨论区' },
+          ];
+
+      for (const zoneData of zonesData) {
+        const zone = await prisma.readingZone.create({
+          data: {
+            ...zoneData,
+            readingRoomId: room.id,
+          },
+        });
+
+        const seatCount = 12;
+        const seatsToCreate = [];
+        for (let i = 1; i <= seatCount; i++) {
+          const row = Math.ceil(i / 4);
+          const col = ((i - 1) % 4) + 1;
+          seatsToCreate.push({
+            seatNumber: `${zone.name}${row}${String.fromCharCode(64 + col)}`,
+            zoneId: zone.id,
+            hasPowerOutlet: i % 2 === 0,
+            isWindowSide: col === 1 || col === 4,
+            status: i === 8 ? SeatStatus.BANNED : SeatStatus.AVAILABLE,
+            banReason: i === 8 ? '座椅损坏待维修' : null,
+          });
+        }
+        await prisma.seat.createMany({ data: seatsToCreate });
+      }
+    }
+    console.log('Reading rooms, zones, and seats created.');
+  }
+
+  console.log('Generating sample seat reservations...');
+  const seats = await prisma.seat.findMany({ take: 30 });
+  const borrowers = await prisma.borrower.findMany();
+  const now = new Date();
+
+  const existingSeatReservations = await prisma.seatReservation.count();
+  if (existingSeatReservations === 0 && seats.length > 0 && borrowers.length > 0) {
+    const reservationsToCreate = [];
+    const timeSlots = Object.values(TimeSlot);
+
+    for (let dayOffset = -1; dayOffset <= 1; dayOffset++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() + dayOffset);
+      date.setHours(0, 0, 0, 0);
+
+      const reservationCount = 8 + Math.floor(Math.random() * 8);
+      for (let i = 0; i < reservationCount; i++) {
+        const seat = seats[Math.floor(Math.random() * seats.length)];
+        const borrower = borrowers[Math.floor(Math.random() * borrowers.length)];
+        const timeSlot = timeSlots[Math.floor(Math.random() * timeSlots.length)];
+
+        const exists = reservationsToCreate.find(
+          (r) => r.seatId === seat.id && r.date.getTime() === date.getTime() && r.timeSlot === timeSlot,
+        );
+        if (exists) continue;
+
+        let status = SeatReservationStatus.BOOKED;
+        if (dayOffset < 0) {
+          const rand = Math.random();
+          if (rand < 0.4) status = SeatReservationStatus.CHECKED_IN;
+          else if (rand < 0.6) status = SeatReservationStatus.CANCELLED;
+          else if (rand < 0.8) status = SeatReservationStatus.NO_SHOW;
+          else status = SeatReservationStatus.RELEASED;
+        } else if (dayOffset === 0) {
+          if (Math.random() < 0.3) status = SeatReservationStatus.CHECKED_IN;
+          else if (Math.random() < 0.2) status = SeatReservationStatus.CANCELLED;
+        }
+
+        const reservation: any = {
+          seatId: seat.id,
+          borrowerId: borrower.id,
+          date,
+          timeSlot,
+          status,
+        };
+
+        if (status === SeatReservationStatus.CHECKED_IN || status === SeatReservationStatus.RELEASED) {
+          reservation.checkedInAt = new Date(date.getTime() + Math.random() * 8 * 60 * 60 * 1000);
+        }
+        if (status === SeatReservationStatus.RELEASED) {
+          reservation.releasedAt = new Date(date.getTime() + Math.random() * 10 * 60 * 60 * 1000);
+        }
+        if (status === SeatReservationStatus.CANCELLED) {
+          reservation.cancelledAt = new Date(date.getTime() - Math.random() * 2 * 24 * 60 * 60 * 1000);
+        }
+        if (status === SeatReservationStatus.NO_SHOW) {
+          reservation.noShowAt = new Date(date.getTime() + Math.random() * 6 * 60 * 60 * 1000);
+        }
+
+        reservationsToCreate.push(reservation);
+      }
+    }
+
+    await prisma.seatReservation.createMany({ data: reservationsToCreate });
+    console.log('Seat reservations created.');
   }
 
   console.log('Seed data created successfully!');

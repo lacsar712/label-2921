@@ -66,6 +66,21 @@ const router = createRouter({
           name: 'FineLedger',
           component: () => import('../views/FineLedger.vue'),
         },
+        {
+          path: 'reading-rooms',
+          name: 'ReadingRooms',
+          component: () => import('../views/ReadingRooms.vue'),
+        },
+        {
+          path: 'reading-rooms/:id',
+          name: 'ReadingRoomDetail',
+          component: () => import('../views/ReadingRoomDetail.vue'),
+        },
+        {
+          path: 'seat-reservations',
+          name: 'SeatReservations',
+          component: () => import('../views/SeatReservations.vue'),
+        },
 
       ],
     },

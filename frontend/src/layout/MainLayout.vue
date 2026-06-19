@@ -55,6 +55,14 @@
           <el-icon><Document /></el-icon>
           <span>罚金台账</span>
         </el-menu-item>
+        <el-menu-item index="/reading-rooms">
+          <el-icon><OfficeBuilding /></el-icon>
+          <span>阅览室管理</span>
+        </el-menu-item>
+        <el-menu-item index="/seat-reservations">
+          <el-icon><Calendar /></el-icon>
+          <span>座位预约</span>
+        </el-menu-item>
         <el-menu-item
           v-if="userStore.isAdmin"
           index="/system-settings"
@@ -133,7 +141,9 @@ import {
   Expand,
   Fold,
   Money,
-  Document
+  Document,
+  OfficeBuilding,
+  Calendar
 } from '@element-plus/icons-vue';
 
 const route = useRoute();
@@ -153,8 +163,11 @@ const currentRouteName = computed(() => {
     '/reservations': '预约管理',
     '/fines': '罚金管理',
     '/fine-ledger': '罚金台账',
+    '/reading-rooms': '阅览室管理',
+    '/seat-reservations': '座位预约',
     '/system-settings': '系统管理'
   };
+  if (route.path.startsWith('/reading-rooms/')) return '阅览室详情';
   return titles[route.path] || '首页';
 });
 

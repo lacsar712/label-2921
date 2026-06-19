@@ -64,3 +64,43 @@ export const fineExportSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
 });
+
+export const readingRoomSchema = z.object({
+  name: z.string().min(1, '阅览室名称必填'),
+  description: z.string().optional(),
+  location: z.string().optional(),
+  openTime: z.string().optional(),
+  closeTime: z.string().optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const readingZoneSchema = z.object({
+  name: z.string().min(1, '区域名称必填'),
+  type: z.enum(['SILENT', 'DISCUSSION', 'GENERAL', 'COMPUTER']).optional(),
+  description: z.string().optional(),
+  readingRoomId: z.number().int(),
+});
+
+export const seatSchema = z.object({
+  seatNumber: z.string().min(1, '座位编号必填'),
+  zoneId: z.number().int(),
+  hasPowerOutlet: z.boolean().optional(),
+  isWindowSide: z.boolean().optional(),
+  status: z.enum(['AVAILABLE', 'BANNED']).optional(),
+  banReason: z.string().optional(),
+});
+
+export const seatReservationSchema = z.object({
+  seatId: z.number().int(),
+  borrowerId: z.number().int(),
+  date: z.string().min(1, '预约日期必填'),
+  timeSlot: z.enum(['MORNING_1', 'MORNING_2', 'AFTERNOON_1', 'AFTERNOON_2', 'EVENING_1', 'EVENING_2']),
+});
+
+export const seatBanSchema = z.object({
+  banReason: z.string().min(1, '封禁原因必填'),
+});
+
+export const seatReservationStatusSchema = z.object({
+  remark: z.string().optional(),
+});

@@ -153,3 +153,97 @@ model SystemSettings {
   description    String?
   updatedAt      DateTime @updatedAt
 }
+
+enum ZoneType {
+  SILENT
+  DISCUSSION
+  GENERAL
+  COMPUTER
+}
+
+model ReadingRoom {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique
+  description String?
+  location    String?
+  openTime    String?
+  closeTime   String?
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  zones       ReadingZone[]
+}
+
+model ReadingZone {
+  id           Int      @id @default(autoincrement())
+  name         String
+  type         ZoneType @default(GENERAL)
+  description  String?
+  readingRoomId Int
+  readingRoom  ReadingRoom @relation(fields: [readingRoomId], references: [id])
+  seats        Seat[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([readingRoomId, name])
+}
+
+enum SeatStatus {
+  AVAILABLE
+  BANNED
+}
+
+model Seat {
+  id           Int           @id @default(autoincrement())
+  seatNumber   String
+  zoneId       Int
+  zone         ReadingZone   @relation(fields: [zoneId], references: [id])
+  hasPowerOutlet Boolean     @default(false)
+  isWindowSide Boolean      @default(false)
+  status       SeatStatus    @default(AVAILABLE)
+  banReason    String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  reservations SeatReservation[]
+
+  @@unique([zoneId, seatNumber])
+}
+
+enum SeatReservationStatus {
+  BOOKED
+  CANCELLED
+  CHECKED_IN
+  NO_SHOW
+  RELEASED
+}
+
+enum TimeSlot {
+  MORNING_1
+  MORNING_2
+  AFTERNOON_1
+  AFTERNOON_2
+  EVENING_1
+  EVENING_2
+}
+
+model SeatReservation {
+  id         Int                     @id @default(autoincrement())
+  seatId     Int
+  seat       Seat                    @relation(fields: [seatId], references: [id])
+  borrowerId Int
+  borrower   Borrower                @relation(fields: [borrowerId], references: [id])
+  date       DateTime
+  timeSlot   TimeSlot
+  status     SeatReservationStatus   @default(BOOKED)
+  checkedInAt  DateTime?
+  cancelledAt  DateTime?
+  noShowAt     DateTime?
+  releasedAt   DateTime?
+  operatorId   Int?
+  operator     User?                 @relation(fields: [operatorId], references: [id])
+  remark       String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@unique([seatId, date, timeSlot])
+}
