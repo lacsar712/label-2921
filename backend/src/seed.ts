@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Role, ZoneType, SeatStatus, TimeSlot, SeatReservationStatus } from '@prisma/client';
+import { Role, ZoneType, SeatStatus, TimeSlot, SeatReservationStatus, CooperationLevel } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from './utils/prisma';
 
@@ -57,6 +57,31 @@ async function main() {
     prisma.category.upsert({ where: { id: 6 }, update: {}, create: { name: '经济学' } }),
   ]);
 
+  // Create Publishers
+  console.log('Generating publishers...');
+  const publishersData = [
+    { name: '人民邮电出版社', location: '北京市西城区', postalCode: '100061', phone: '010-81055666', website: 'https://www.ptpress.com.cn', cooperationLevel: CooperationLevel.A },
+    { name: '机械工业出版社', location: '北京市西城区', postalCode: '100037', phone: '010-88379639', website: 'https://www.cmpbook.com', cooperationLevel: CooperationLevel.A },
+    { name: '电子工业出版社', location: '北京市海淀区', postalCode: '100036', phone: '010-88254888', website: 'https://www.phei.com.cn', cooperationLevel: CooperationLevel.B },
+    { name: '清华大学出版社', location: '北京市海淀区', postalCode: '100084', phone: '010-62770175', website: 'https://www.tup.com.cn', cooperationLevel: CooperationLevel.A },
+    { name: '北京大学出版社', location: '北京市海淀区', postalCode: '100871', phone: '010-62752922', website: 'https://www.pup.cn', cooperationLevel: CooperationLevel.B },
+    { name: '中信出版社', location: '北京市朝阳区', postalCode: '100029', phone: '010-84263318', website: 'https://www.citicpub.com', cooperationLevel: CooperationLevel.A },
+    { name: '上海译文出版社', location: '上海市长宁区', postalCode: '200050', phone: '021-62241064', website: 'https://www.yiwen.com.cn', cooperationLevel: CooperationLevel.B },
+    { name: '商务印书馆', location: '北京市东城区', postalCode: '100710', phone: '010-65256815', website: 'https://www.cp.com.cn', cooperationLevel: CooperationLevel.A },
+    { name: '人民文学出版社', location: '北京市东城区', postalCode: '100705', phone: '010-65256841', website: 'https://www.rw-cn.com', cooperationLevel: CooperationLevel.B },
+    { name: '中华书局', location: '北京市丰台区', postalCode: '100073', phone: '010-63267312', website: 'https://www.zhbc.com.cn', cooperationLevel: CooperationLevel.C },
+  ];
+
+  const publishers = [];
+  for (const pubData of publishersData) {
+    const pub = await prisma.publisher.upsert({
+      where: { name: pubData.name },
+      update: {},
+      create: pubData,
+    });
+    publishers.push(pub);
+  }
+
   // Create 100+ Books
   console.log('Generating 100+ books...');
   const bookTitles = [
@@ -75,6 +100,7 @@ async function main() {
     const title = `${subjects[i % subjects.length]}${bookTitles[i % bookTitles.length]} Vol.${Math.floor(i / subjects.length) + 1}`;
     const author = authors[i % authors.length];
     const category = categories[i % categories.length];
+    const publisher = publishers[i % publishers.length];
     
     booksData.push({
       title,
@@ -83,6 +109,7 @@ async function main() {
       stock: Math.floor(Math.random() * 50) + 1,
       price: parseFloat((Math.random() * 100 + 20).toFixed(2)),
       categoryId: category.id,
+      publisherId: publisher.id,
     });
   }
 

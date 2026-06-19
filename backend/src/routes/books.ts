@@ -62,6 +62,7 @@ router.get('/', async (req, res) => {
     where,
     include: {
       category: true,
+      publisher: true,
       bookTags: {
         include: { tag: true },
       },
@@ -85,6 +86,7 @@ router.get('/:id', async (req, res) => {
     where: { id: Number(req.params.id) },
     include: {
       category: true,
+      publisher: true,
       bookTags: {
         include: { tag: true },
       },
@@ -115,10 +117,11 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
   try {
-    const { tagIds, authorIds, quickAuthors, ...bookData } = req.body;
+    const { tagIds, authorIds, quickAuthors, publisherId, ...bookData } = req.body;
     const payload = bookSchema.parse({
       ...bookData,
       categoryId: Number(bookData.categoryId),
+      publisherId: publisherId ? Number(publisherId) : null,
       price: Number(bookData.price),
       stock: Number(bookData.stock),
     });
@@ -164,6 +167,7 @@ router.post('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (r
     const book = await prisma.book.create({
       data: {
         ...payload,
+        publisherId: payload.publisherId || undefined,
         bookTags: tagIdsArray.length > 0
           ? {
               create: tagIdsArray.map((tagId: number) => ({
@@ -180,6 +184,7 @@ router.post('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (r
           : undefined,
       },
       include: {
+        publisher: true,
         bookTags: {
           include: { tag: true },
         },
@@ -204,13 +209,14 @@ router.post('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (r
 router.put('/:id', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
   try {
     const bookId = Number(req.params.id);
-    const { tagIds, authorIds, quickAuthors, ...bookData } = req.body;
+    const { tagIds, authorIds, quickAuthors, publisherId, ...bookData } = req.body;
     
     const payload = bookUpdateSchema.parse({
       ...bookData,
       price: bookData.price !== undefined ? Number(bookData.price) : undefined,
       stock: bookData.stock !== undefined ? Number(bookData.stock) : undefined,
       categoryId: bookData.categoryId !== undefined ? Number(bookData.categoryId) : undefined,
+      publisherId: publisherId !== undefined ? (publisherId ? Number(publisherId) : null) : undefined,
     });
 
     const tagIdsArray = Array.isArray(tagIds) ? tagIds.map(Number) : null;
@@ -263,6 +269,9 @@ router.put('/:id', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async 
       where: { id: bookId },
       data: {
         ...payload,
+        ...(payload.publisherId !== undefined ? {
+          publisherId: payload.publisherId || undefined,
+        } : {}),
         ...(tagIdsArray !== null ? {
           bookTags: {
             deleteMany: {},
@@ -276,6 +285,7 @@ router.put('/:id', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async 
         } : {}),
       },
       include: {
+        publisher: true,
         bookTags: {
           include: { tag: true },
         },

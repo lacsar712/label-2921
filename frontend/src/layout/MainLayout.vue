@@ -35,6 +35,10 @@
           <el-icon><PriceTag /></el-icon>
           <span>标签管理</span>
         </el-menu-item>
+        <el-menu-item index="/publishers">
+          <el-icon><OfficeBuilding /></el-icon>
+          <span>出版社管理</span>
+        </el-menu-item>
         <el-menu-item index="/borrowers">
           <el-icon><User /></el-icon>
           <span>借阅用户</span>
@@ -163,6 +167,7 @@ const currentRouteName = computed(() => {
     '/books': '图书管理',
     '/categories': '分类管理',
     '/tags': '标签管理',
+    '/publishers': '出版社管理',
     '/borrowers': '借阅用户',
     '/borrows': '借阅历史',
     '/current-borrows': '当前借阅',
@@ -174,6 +179,7 @@ const currentRouteName = computed(() => {
     '/system-settings': '系统管理'
   };
   if (route.path.startsWith('/reading-rooms/')) return '阅览室详情';
+  if (route.path.startsWith('/publishers/')) return '出版社详情';
   return titles[route.path] || '首页';
 });
 

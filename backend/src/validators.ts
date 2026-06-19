@@ -16,6 +16,7 @@ export const bookSchema = z.object({
   author: z.string().min(1),
   isbn: z.string().min(5),
   categoryId: z.number().int(),
+  publisherId: z.number().int().optional().nullable(),
   price: z.number().min(0),
   stock: z.number().int().min(0),
   description: z.string().optional(),
@@ -150,3 +151,14 @@ export const bookReviewSchema = z.object({
   rating: z.number().int().min(1, '评分至少1分').max(5, '评分最多5分'),
   comment: z.string().optional(),
 });
+
+export const publisherSchema = z.object({
+  name: z.string().min(1, '出版社名称必填'),
+  location: z.string().optional(),
+  postalCode: z.string().optional(),
+  phone: z.string().optional(),
+  website: z.string().optional(),
+  cooperationLevel: z.enum(['A', 'B', 'C', 'D']).optional(),
+});
+
+export const publisherUpdateSchema = publisherSchema.partial();

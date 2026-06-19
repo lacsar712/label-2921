@@ -17,6 +17,13 @@ enum AuthorStatus {
   DISABLED
 }
 
+enum CooperationLevel {
+  A
+  B
+  C
+  D
+}
+
 model User {
   id                      Int                      @id @default(autoincrement())
   username                String                   @unique
@@ -45,6 +52,21 @@ model Category {
   id    Int    @id @default(autoincrement())
   name  String @unique
   books Book[]
+}
+
+model Publisher {
+  id               Int              @id @default(autoincrement())
+  name             String           @unique
+  location         String?
+  postalCode       String?
+  phone            String?
+  website          String?
+  cooperationLevel CooperationLevel @default(B)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  books            Book[]
+
+  @@index([cooperationLevel])
 }
 
 model Author {
@@ -124,6 +146,8 @@ model Book {
   description String?
   categoryId  Int
   category    Category   @relation(fields: [categoryId], references: [id])
+  publisherId Int?
+  publisher   Publisher? @relation(fields: [publisherId], references: [id])
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   borrows     BorrowRecord[]

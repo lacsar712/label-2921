@@ -132,6 +132,16 @@
               width="100"
             />
             <el-table-column
+              label="出版社"
+              width="140"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                <span v-if="row.publisher">{{ row.publisher.name }}</span>
+                <span v-else class="text-grey">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column
               label="标签"
               min-width="200"
             >
@@ -289,6 +299,36 @@
               :value="cat.id"
             />
           </el-select>
+        </el-form-item>
+        <el-form-item
+          label="出版社"
+          prop="publisherId"
+        >
+          <el-select
+            v-model="form.publisherId"
+            placeholder="请选择出版社"
+            style="width: 100%"
+            filterable
+            clearable
+          >
+            <el-option
+              v-for="pub in publishers"
+              :key="pub.id"
+              :label="pub.name"
+              :value="pub.id"
+            />
+          </el-select>
+          <div style="margin-top: 8px">
+            <el-button
+              type="primary"
+              link
+              size="small"
+              :icon="Plus"
+              @click="openQuickPublisher"
+            >
+              快速添加出版社
+            </el-button>
+          </div>
         </el-form-item>
         <el-form-item
           label="标签"
@@ -526,6 +566,67 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="quickPublisherVisible"
+      title="快速添加出版社"
+      width="450px"
+    >
+      <el-form
+        ref="quickPublisherFormRef"
+        :model="quickPublisherForm"
+        :rules="quickPublisherRules"
+        label-width="100px"
+      >
+        <el-form-item
+          label="名称"
+          prop="name"
+        >
+          <el-input v-model="quickPublisherForm.name" />
+        </el-form-item>
+        <el-form-item label="所在地">
+          <el-input v-model="quickPublisherForm.location" />
+        </el-form-item>
+        <el-form-item label="邮编">
+          <el-input v-model="quickPublisherForm.postalCode" />
+        </el-form-item>
+        <el-form-item label="联系电话">
+          <el-input v-model="quickPublisherForm.phone" />
+        </el-form-item>
+        <el-form-item label="官网">
+          <el-input
+            v-model="quickPublisherForm.website"
+            placeholder="https://"
+          />
+        </el-form-item>
+        <el-form-item
+          label="合作等级"
+          prop="cooperationLevel"
+        >
+          <el-select
+            v-model="quickPublisherForm.cooperationLevel"
+            style="width: 100%"
+          >
+            <el-option label="A级" value="A" />
+            <el-option label="B级" value="B" />
+            <el-option label="C级" value="C" />
+            <el-option label="D级" value="D" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="quickPublisherVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="quickPublisherSubmitting"
+          @click="submitQuickPublisher"
+        >
+          确定添加
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -536,11 +637,12 @@ import api from '../api';
 import { useUserStore } from '../store/user';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance } from 'element-plus';
-import type { Tag, Book } from '../types';
+import type { Tag, Book, Publisher, CooperationLevel } from '../types';
 
 const userStore = useUserStore();
 const books = ref<Book[]>([]);
 const categories = ref<any[]>([]);
+const publishers = ref<Publisher[]>([]);
 const borrowers = ref<any[]>([]);
 const allTags = ref<Tag[]>([]);
 const hotTags = ref<Tag[]>([]);
@@ -590,12 +692,29 @@ const reserveRules = {
   borrowerId: [{ required: true, message: '请选择预约用户', trigger: 'change' }]
 };
 
+const quickPublisherVisible = ref(false);
+const quickPublisherSubmitting = ref(false);
+const quickPublisherFormRef = ref<FormInstance | null>(null);
+const quickPublisherForm = reactive({
+  name: '',
+  location: '',
+  postalCode: '',
+  phone: '',
+  website: '',
+  cooperationLevel: 'B' as CooperationLevel,
+});
+const quickPublisherRules = {
+  name: [{ required: true, message: '请输入出版社名称', trigger: 'blur' }],
+  cooperationLevel: [{ required: true, message: '请选择合作等级', trigger: 'change' }],
+};
+
 const form = reactive({
   id: undefined as number | undefined,
   title: '',
   author: '',
   isbn: '',
   categoryId: undefined as number | undefined,
+  publisherId: undefined as number | undefined,
   tagIds: [] as number[],
   price: 0,
   stock: 0,
@@ -681,6 +800,45 @@ const fetchBorrowers = async () => {
   }
 };
 
+const fetchPublishers = async () => {
+  try {
+    const res: any = await api.get('/publishers');
+    publishers.value = res;
+  } catch (error) {
+    console.error('Failed to fetch publishers:', error);
+  }
+};
+
+const openQuickPublisher = () => {
+  Object.assign(quickPublisherForm, {
+    name: '',
+    location: '',
+    postalCode: '',
+    phone: '',
+    website: '',
+    cooperationLevel: 'B' as CooperationLevel,
+  });
+  quickPublisherVisible.value = true;
+};
+
+const submitQuickPublisher = async () => {
+  if (!quickPublisherFormRef.value) return;
+  await quickPublisherFormRef.value.validate(async (valid: boolean) => {
+    if (valid) {
+      quickPublisherSubmitting.value = true;
+      try {
+        const res: any = await api.post('/publishers', quickPublisherForm);
+        ElMessage.success('出版社添加成功');
+        form.publisherId = res.id;
+        quickPublisherVisible.value = false;
+        fetchPublishers();
+      } finally {
+        quickPublisherSubmitting.value = false;
+      }
+    }
+  });
+};
+
 const toggleTag = (tagId: number) => {
   const index = selectedTagIds.value.indexOf(tagId);
   if (index > -1) {
@@ -714,6 +872,7 @@ const handleAdd = () => {
     author: '',
     isbn: '',
     categoryId: undefined,
+    publisherId: undefined,
     tagIds: [],
     price: 0,
     stock: 0,
@@ -731,6 +890,7 @@ const handleEdit = (row: Book) => {
     author: row.author,
     isbn: row.isbn,
     categoryId: row.categoryId,
+    publisherId: row.publisherId || undefined,
     tagIds: row.tags?.map((t) => t.id) || [],
     price: row.price,
     stock: row.stock,
@@ -869,6 +1029,7 @@ const submitForm = async () => {
 onMounted(() => {
   fetchBooks();
   fetchCategories();
+  fetchPublishers();
   fetchTags();
   fetchHotTags();
   fetchTagsWithStats();
@@ -1051,5 +1212,9 @@ onMounted(() => {
     height: 8px;
     border-radius: 50%;
   }
+}
+
+.text-grey {
+  color: #909399;
 }
 </style>

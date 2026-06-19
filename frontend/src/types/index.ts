@@ -26,6 +26,8 @@ export interface Book {
   description?: string;
   categoryId: number;
   category: Category;
+  publisherId?: number;
+  publisher?: Publisher;
   tags?: Tag[];
   createdAt: string;
   updatedAt: string;
@@ -277,6 +279,45 @@ export interface ReadingRoomStats {
   statusCounts: Record<SeatReservationStatus, number>;
   slotStats: Record<TimeSlot, SlotStats>;
   timeSlotLabels: Record<TimeSlot, TimeSlotInfo>;
+}
+
+export type CooperationLevel = 'A' | 'B' | 'C' | 'D';
+
+export interface Publisher {
+  id: number;
+  name: string;
+  location?: string;
+  postalCode?: string;
+  phone?: string;
+  website?: string;
+  cooperationLevel: CooperationLevel;
+  createdAt: string;
+  updatedAt: string;
+  bookCount?: number;
+  totalStock?: number;
+  recentBorrowCount?: number;
+}
+
+export interface PublisherBook {
+  id: number;
+  title: string;
+  author: string;
+  isbn: string;
+  stock: number;
+  price: number;
+  category: string;
+  totalBorrows: number;
+  recentBorrows: number;
+}
+
+export interface PublisherDetail extends Publisher {
+  books: PublisherBook[];
+  statistics: {
+    bookCount: number;
+    totalStock: number;
+    totalBorrows: number;
+    recentBorrowCount: number;
+  };
 }
 
 export interface Borrower {
