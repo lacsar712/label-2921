@@ -1,0 +1,13 @@
+node_modules
+dist
+.env
+*.log
+.docker-data
+backend/prisma/*.db
+backend/prisma/*.db-journal
+frontend/dist
+backend/dist
+
+# local dev / tooling
+trae/
+prompts.md
