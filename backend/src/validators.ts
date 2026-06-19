@@ -147,9 +147,30 @@ export const authorSchema = z.object({
 export const authorUpdateSchema = authorSchema.partial();
 
 export const bookReviewSchema = z.object({
-  bookId: z.number().int(),
+  borrowRecordId: z.number().int(),
   rating: z.number().int().min(1, '评分至少1分').max(5, '评分最多5分'),
   comment: z.string().optional(),
+});
+
+export const bookReviewUpdateSchema = z.object({
+  rating: z.number().int().min(1, '评分至少1分').max(5, '评分最多5分').optional(),
+  comment: z.string().optional(),
+});
+
+export const bookReviewReplySchema = z.object({
+  reply: z.string().min(1, '回复内容必填'),
+});
+
+export const bookReviewQuerySchema = z.object({
+  rating: z.number().int().min(1).max(5).optional(),
+  keyword: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  isComplaint: z.boolean().optional(),
+  hasOfficialReply: z.boolean().optional(),
+  bookId: z.number().int().optional(),
+  page: z.number().int().min(1).optional(),
+  pageSize: z.number().int().min(1).max(100).optional(),
 });
 
 export const publisherSchema = z.object({

@@ -188,6 +188,38 @@
               </template>
             </el-table-column>
             <el-table-column
+              label="评分"
+              width="130"
+            >
+              <template #default="{ row }">
+                <div v-if="row.reviewCount > 0" class="rating-cell">
+                  <el-rate
+                    :model-value="row.avgRating"
+                    disabled
+                    size="small"
+                  />
+                  <span class="rating-score">{{ row.avgRating }}</span>
+                </div>
+                <span v-else class="text-grey">暂无</span>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="评价数"
+              width="80"
+            >
+              <template #default="{ row }">
+                <el-tag
+                  v-if="row.reviewCount > 0"
+                  type="primary"
+                  effect="plain"
+                  size="small"
+                >
+                  {{ row.reviewCount }}
+                </el-tag>
+                <span v-else class="text-grey">0</span>
+              </template>
+            </el-table-column>
+            <el-table-column
               label="在借数量"
               width="90"
             >
@@ -627,6 +659,70 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="reviewDialogVisible"
+      title="图书评价"
+      width="480px"
+      :close-on-click-modal="false"
+    >
+      <el-alert
+        type="success"
+        :closable="false"
+        style="margin-bottom: 16px"
+      >
+        图书归还成功！欢迎您对借阅的图书进行评价。
+      </el-alert>
+      <el-descriptions
+        :column="1"
+        border
+        size="small"
+        style="margin-bottom: 20px"
+      >
+        <el-descriptions-item label="图书名称">
+          {{ reviewForm.bookTitle }}
+        </el-descriptions-item>
+        <el-descriptions-item label="借阅用户">
+          {{ reviewForm.borrowerName }}
+        </el-descriptions-item>
+      </el-descriptions>
+      <el-form
+        ref="reviewFormRef"
+        :model="reviewForm"
+        :rules="reviewRules"
+        label-width="80px"
+      >
+        <el-form-item
+          label="评分"
+          prop="rating"
+        >
+          <el-rate v-model="reviewForm.rating" />
+        </el-form-item>
+        <el-form-item
+          label="评价内容"
+          prop="comment"
+        >
+          <el-input
+            v-model="reviewForm.comment"
+            type="textarea"
+            :rows="4"
+            placeholder="请分享您对这本书的阅读感受（可选）"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="handleSkipReview">
+          稍后评价
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="reviewSubmitting"
+          @click="submitReview"
+        >
+          提交评价
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -708,6 +804,22 @@ const quickPublisherRules = {
   cooperationLevel: [{ required: true, message: '请选择合作等级', trigger: 'change' }],
 };
 
+const reviewDialogVisible = ref(false);
+const reviewSubmitting = ref(false);
+const reviewFormRef = ref<FormInstance | null>(null);
+const reviewForm = reactive({
+  borrowRecordId: undefined as number | undefined,
+  bookId: undefined as number | undefined,
+  bookTitle: '',
+  borrowerId: undefined as number | undefined,
+  borrowerName: '',
+  rating: 5,
+  comment: '',
+});
+const reviewRules = {
+  rating: [{ required: true, message: '请选择评分', trigger: 'change' }],
+};
+
 const form = reactive({
   id: undefined as number | undefined,
   title: '',
@@ -752,7 +864,7 @@ const fetchBooks = async () => {
     }
     const res: any = await api.get('/books', { params });
     const booksWithBorrowCount = await Promise.all(
-      res.map(async (book: Book) => {
+      res.map(async (book: any) => {
         const borrowCountRes: any = await api.get(`/books/${book.id}/borrow-count`);
         return { ...book, borrowedCount: borrowCountRes.count || 0 };
       })
@@ -945,6 +1057,21 @@ const submitReturn = async () => {
     await api.post(`/borrows/${returnForm.borrowId}/return`);
     ElMessage.success('归还成功');
     returnDialogVisible.value = false;
+
+    const selectedRecord = bookBorrowRecords.value.find((r) => r.id === returnForm.borrowId);
+    if (selectedRecord) {
+      Object.assign(reviewForm, {
+        borrowRecordId: returnForm.borrowId,
+        bookId: returnForm.bookId,
+        bookTitle: returnForm.bookTitle,
+        borrowerId: selectedRecord.borrower.id,
+        borrowerName: selectedRecord.borrower.name,
+        rating: 5,
+        comment: '',
+      });
+      reviewDialogVisible.value = true;
+    }
+
     fetchBooks();
     fetchTagsWithStats();
   } catch (error) {
@@ -952,6 +1079,31 @@ const submitReturn = async () => {
   } finally {
     returnSubmitting.value = false;
   }
+};
+
+const submitReview = async () => {
+  if (!reviewFormRef.value) return;
+  await reviewFormRef.value.validate(async (valid: boolean) => {
+    if (valid) {
+      reviewSubmitting.value = true;
+      try {
+        await api.post('/reviews', {
+          borrowRecordId: reviewForm.borrowRecordId,
+          rating: reviewForm.rating,
+          comment: reviewForm.comment,
+        });
+        ElMessage.success('评价提交成功');
+        reviewDialogVisible.value = false;
+        fetchBooks();
+      } finally {
+        reviewSubmitting.value = false;
+      }
+    }
+  });
+};
+
+const handleSkipReview = () => {
+  reviewDialogVisible.value = false;
 };
 
 const formatDate = (dateStr: string) => {
@@ -1216,5 +1368,17 @@ onMounted(() => {
 
 .text-grey {
   color: #909399;
+}
+
+.rating-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  .rating-score {
+    font-weight: 600;
+    color: #e6a23c;
+    font-size: 13px;
+  }
 }
 </style>

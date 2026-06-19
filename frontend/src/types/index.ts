@@ -328,3 +328,83 @@ export interface Borrower {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface BookReview {
+  id: number;
+  bookId: number;
+  book?: {
+    id: number;
+    title: string;
+    author: string;
+    isbn?: string;
+  };
+  borrowerId: number;
+  borrower?: Borrower;
+  borrowRecordId: number;
+  rating: number;
+  comment?: string;
+  isComplaint: boolean;
+  officialReply?: string;
+  officialReplyAt?: string;
+  officialReplyById?: number;
+  officialReplyBy?: {
+    id: number;
+    username: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BookReviewSummaryItem {
+  bookId: number;
+  title: string;
+  author: string;
+  isbn: string;
+  avgRating: number;
+  reviewCount: number;
+  ratingDistribution: Record<number, number>;
+  complaintCount: number;
+  unrepliedCount: number;
+}
+
+export interface BookReviewListResponse {
+  data: BookReview[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface RatingDistribution {
+  1: number;
+  2: number;
+  3: number;
+  4: number;
+  5: number;
+}
+
+export interface BookWithRating extends Book {
+  avgRating: number;
+  reviewCount: number;
+  ratingDistribution?: RatingDistribution;
+  reviews?: BookReview[];
+}
+
+export interface EligibleBorrowRecord {
+  id: number;
+  bookId: number;
+  borrowerId: number;
+  borrowDate: string;
+  dueDate: string;
+  returnDate?: string;
+  status: string;
+  book: {
+    id: number;
+    title: string;
+    author: string;
+    isbn: string;
+  };
+}
+
+export interface ReviewEditConfig {
+  editDays: number;
+}

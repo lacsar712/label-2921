@@ -71,6 +71,10 @@
           <el-icon><Calendar /></el-icon>
           <span>座位预约</span>
         </el-menu-item>
+        <el-menu-item index="/reviews">
+          <el-icon><ChatDotSquare /></el-icon>
+          <span>评价管理</span>
+        </el-menu-item>
         <el-menu-item
           v-if="userStore.isAdmin"
           index="/system-settings"
@@ -152,7 +156,8 @@ import {
   Money,
   Document,
   OfficeBuilding,
-  Calendar
+  Calendar,
+  ChatDotSquare
 } from '@element-plus/icons-vue';
 
 const route = useRoute();
@@ -176,6 +181,7 @@ const currentRouteName = computed(() => {
     '/fine-ledger': '罚金台账',
     '/reading-rooms': '阅览室管理',
     '/seat-reservations': '座位预约',
+    '/reviews': '评价管理',
     '/system-settings': '系统管理'
   };
   if (route.path.startsWith('/reading-rooms/')) return '阅览室详情';

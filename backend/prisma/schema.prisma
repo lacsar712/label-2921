@@ -101,17 +101,26 @@ model BookAuthor {
 }
 
 model BookReview {
-  id          Int       @id @default(autoincrement())
-  bookId      Int
-  book        Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  borrowerId  Int
-  borrower    Borrower  @relation(fields: [borrowerId], references: [id])
-  rating      Int
-  comment     String?
-  createdAt   DateTime  @default(now())
+  id                Int        @id @default(autoincrement())
+  bookId            Int
+  book              Book       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  borrowerId        Int
+  borrower          Borrower   @relation(fields: [borrowerId], references: [id])
+  borrowRecordId    Int        @unique
+  borrowRecord      BorrowRecord @relation("BorrowRecordReview", fields: [borrowRecordId], references: [id])
+  rating            Int
+  comment           String?
+  isComplaint       Boolean    @default(false)
+  officialReply     String?
+  officialReplyAt   DateTime?
+  officialReplyById Int?
+  officialReplyBy   User?      @relation(fields: [officialReplyById], references: [id])
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
-  @@unique([bookId, borrowerId])
   @@index([bookId])
+  @@index([rating])
+  @@index([createdAt])
 }
 
 model Tag {
@@ -157,16 +166,17 @@ model Book {
 }
 
 model BorrowRecord {
-  id         Int       @id @default(autoincrement())
+  id         Int          @id @default(autoincrement())
   bookId     Int
-  book       Book      @relation(fields: [bookId], references: [id])
+  book       Book         @relation(fields: [bookId], references: [id])
   borrowerId Int
-  borrower   Borrower  @relation(fields: [borrowerId], references: [id])
-  borrowDate DateTime  @default(now())
+  borrower   Borrower     @relation(fields: [borrowerId], references: [id])
+  borrowDate DateTime     @default(now())
   dueDate    DateTime
   returnDate DateTime?
-  status     String    @default("BORROWED") // BORROWED, RETURNED
+  status     String       @default("BORROWED") // BORROWED, RETURNED
   fines      Fine[]
+  review     BookReview?  @relation("BorrowRecordReview")
 }
 
 enum ReservationStatus {

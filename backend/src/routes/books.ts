@@ -69,14 +69,27 @@ router.get('/', async (req, res) => {
       bookAuthors: {
         include: { author: true },
       },
+      reviews: {
+        select: {
+          rating: true,
+        },
+      },
     },
   });
 
-  const booksWithTags = books.map((book) => ({
-    ...book,
-    tags: book.bookTags.map((bt) => bt.tag),
-    authors: book.bookAuthors.map((ba) => ba.author),
-  }));
+  const booksWithTags = books.map((book) => {
+    const reviewCount = book.reviews.length;
+    const avgRating = reviewCount > 0
+      ? parseFloat((book.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount).toFixed(2))
+      : 0;
+    return {
+      ...book,
+      tags: book.bookTags.map((bt) => bt.tag),
+      authors: book.bookAuthors.map((ba) => ba.author),
+      reviewCount,
+      avgRating,
+    };
+  });
 
   res.json(booksWithTags);
 });
@@ -94,22 +107,38 @@ router.get('/:id', async (req, res) => {
         include: { author: true },
       },
       reviews: {
-        include: { borrower: true },
+        include: {
+          borrower: true,
+          officialReplyBy: {
+            select: {
+              id: true,
+              username: true,
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       },
     },
   });
   if (!book) return res.status(404).json({ message: 'Book not found' });
   
-  const avgRating = book.reviews.length > 0
-    ? book.reviews.reduce((sum, r) => sum + r.rating, 0) / book.reviews.length
+  const reviewCount = book.reviews.length;
+  const avgRating = reviewCount > 0
+    ? book.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
     : 0;
+
+  const ratingDistribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  for (const r of book.reviews) {
+    ratingDistribution[r.rating] = (ratingDistribution[r.rating] || 0) + 1;
+  }
 
   const bookWithTags = {
     ...book,
     tags: book.bookTags.map((bt) => bt.tag),
     authors: book.bookAuthors.map((ba) => ba.author),
     avgRating: parseFloat(avgRating.toFixed(2)),
+    reviewCount,
+    ratingDistribution,
   };
   
   res.json(bookWithTags);
