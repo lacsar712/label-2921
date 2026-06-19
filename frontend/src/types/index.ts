@@ -454,3 +454,123 @@ export interface AnnouncementForm {
   publishAt?: string | null;
   expireAt?: string | null;
 }
+
+export type DonationStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PARTIAL_STOCKED' | 'STOCKED';
+export type BookCondition = 'NEW' | 'LIKE_NEW' | 'GOOD' | 'FAIR' | 'POOR';
+export type DonationChannel = 'INDIVIDUAL' | 'ORGANIZATION' | 'ONLINE' | 'EVENT' | 'OTHER';
+
+export interface DonationBook {
+  id: number;
+  donationId: number;
+  bookId?: number;
+  book?: Book;
+  title: string;
+  isbn?: string;
+  quantity: number;
+  condition: BookCondition;
+  estimatedValue: number;
+  donationDate: string;
+  categoryId?: number;
+  category?: Category;
+  stockedQty: number;
+  isStocked: boolean;
+  remark?: string;
+  createdAt: string;
+  updatedAt: string;
+  remainingQty?: number;
+  canStockIn?: boolean;
+  currentStock?: number;
+}
+
+export interface DonationStatusLog {
+  id: number;
+  donationId: number;
+  fromStatus?: DonationStatus;
+  toStatus: DonationStatus;
+  operatorId?: number;
+  operator?: {
+    id: number;
+    username: string;
+  };
+  remark?: string;
+  createdAt: string;
+}
+
+export interface Donation {
+  id: number;
+  donorName: string;
+  donorUnit?: string;
+  donorPhone?: string;
+  donorEmail?: string;
+  channel: DonationChannel;
+  status: DonationStatus;
+  totalBooks: number;
+  totalQty: number;
+  totalValue: number;
+  remark?: string;
+  createdById?: number;
+  createdBy?: {
+    id: number;
+    username: string;
+  };
+  reviewedById?: number;
+  reviewedBy?: {
+    id: number;
+    username: string;
+  };
+  reviewedAt?: string;
+  reviewRemark?: string;
+  stockedById?: number;
+  stockedBy?: {
+    id: number;
+    username: string;
+  };
+  stockedAt?: string;
+  items: DonationBook[];
+  statusLogs?: DonationStatusLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DonationListResponse {
+  data: Donation[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface DonationBookForm {
+  title: string;
+  isbn?: string | null;
+  quantity: number;
+  condition?: BookCondition;
+  estimatedValue?: number;
+  donationDate?: string;
+  categoryId?: number | null;
+  remark?: string;
+}
+
+export interface DonationForm {
+  donorName: string;
+  donorUnit?: string | null;
+  donorPhone?: string | null;
+  donorEmail?: string | null;
+  channel?: DonationChannel;
+  remark?: string;
+  items: DonationBookForm[];
+}
+
+export interface DonationStockInItem {
+  itemId: number;
+  bookId?: number;
+  categoryId: number;
+  quantity: number;
+  price?: number;
+  publisherId?: number | null;
+  author?: string;
+}
+
+export interface DonationStockInForm {
+  items: DonationStockInItem[];
+}

@@ -483,3 +483,100 @@ model StockTakeStatusLog {
   @@index([stockTakeId])
   @@index([toStatus])
 }
+
+enum DonationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PARTIAL_STOCKED
+  STOCKED
+}
+
+enum BookCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+  POOR
+}
+
+enum DonationChannel {
+  INDIVIDUAL
+  ORGANIZATION
+  ONLINE
+  EVENT
+  OTHER
+}
+
+model Donation {
+  id             Int              @id @default(autoincrement())
+  donorName      String
+  donorUnit      String?
+  donorPhone     String?
+  donorEmail     String?
+  channel        DonationChannel  @default(INDIVIDUAL)
+  status         DonationStatus   @default(PENDING)
+  totalBooks     Int              @default(0)
+  totalQty       Int              @default(0)
+  totalValue     Float            @default(0)
+  remark         String?
+  createdById    Int?
+  createdBy      User?            @relation("DonationCreator", fields: [createdById], references: [id])
+  reviewedById   Int?
+  reviewedBy     User?            @relation("DonationReviewer", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  reviewRemark   String?
+  stockedById    Int?
+  stockedBy      User?            @relation("DonationStocker", fields: [stockedById], references: [id])
+  stockedAt      DateTime?
+  items          DonationBook[]
+  statusLogs     DonationStatusLog[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([status])
+  @@index([donorName])
+  @@index([createdAt])
+  @@index([channel])
+}
+
+model DonationBook {
+  id            Int           @id @default(autoincrement())
+  donationId    Int
+  donation      Donation      @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  bookId        Int?
+  book          Book?         @relation(fields: [bookId], references: [id])
+  title         String
+  isbn          String?
+  quantity      Int           @default(1)
+  condition     BookCondition @default(GOOD)
+  estimatedValue Float        @default(0)
+  donationDate  DateTime      @default(now())
+  categoryId    Int?
+  category      Category?     @relation(fields: [categoryId], references: [id])
+  stockedQty    Int           @default(0)
+  isStocked     Boolean       @default(false)
+  remark        String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([donationId])
+  @@index([bookId])
+  @@index([isbn])
+  @@index([isStocked])
+}
+
+model DonationStatusLog {
+  id          Int            @id @default(autoincrement())
+  donationId  Int
+  donation    Donation       @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  fromStatus  DonationStatus?
+  toStatus    DonationStatus
+  operatorId  Int?
+  operator    User?          @relation(fields: [operatorId], references: [id])
+  remark      String?
+  createdAt   DateTime       @default(now())
+
+  @@index([donationId])
+  @@index([toStatus])
+}

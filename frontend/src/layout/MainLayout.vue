@@ -79,6 +79,10 @@
           <el-icon><Bell /></el-icon>
           <span>公告中心</span>
         </el-menu-item>
+        <el-menu-item index="/donations">
+          <el-icon><Present /></el-icon>
+          <span>捐赠管理</span>
+        </el-menu-item>
         <el-menu-item
           v-if="userStore.isAdmin"
           index="/system-settings"
@@ -162,7 +166,8 @@ import {
   OfficeBuilding,
   Calendar,
   ChatDotSquare,
-  Bell
+  Bell,
+  Present
 } from '@element-plus/icons-vue';
 
 const route = useRoute();
@@ -188,6 +193,7 @@ const currentRouteName = computed(() => {
     '/seat-reservations': '座位预约',
     '/reviews': '评价管理',
     '/announcements': '公告中心',
+    '/donations': '捐赠管理',
     '/system-settings': '系统管理'
   };
   if (route.path.startsWith('/reading-rooms/')) return '阅览室详情';

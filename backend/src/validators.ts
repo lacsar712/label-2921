@@ -249,3 +249,57 @@ export const stockTakeTrendQuerySchema = z.object({
   endMonth: z.string().min(1, '结束月份必填'),
   categoryId: z.coerce.number().int().optional(),
 });
+
+export const donationBookSchema = z.object({
+  title: z.string().min(1, '书名必填'),
+  isbn: z.string().optional().nullable(),
+  quantity: z.number().int().min(1, '数量至少1册'),
+  condition: z.enum(['NEW', 'LIKE_NEW', 'GOOD', 'FAIR', 'POOR']).optional(),
+  estimatedValue: z.number().min(0, '估价不能为负数').optional(),
+  donationDate: z.string().optional(),
+  categoryId: z.number().int().optional().nullable(),
+  remark: z.string().optional(),
+});
+
+export const donationSchema = z.object({
+  donorName: z.string().min(1, '捐赠人姓名必填'),
+  donorUnit: z.string().optional().nullable(),
+  donorPhone: z.string().optional().nullable(),
+  donorEmail: z.string().optional().nullable(),
+  channel: z.enum(['INDIVIDUAL', 'ORGANIZATION', 'ONLINE', 'EVENT', 'OTHER']).optional(),
+  remark: z.string().optional(),
+  items: z.array(donationBookSchema).min(1, '至少添加一本捐赠图书'),
+});
+
+export const donationUpdateSchema = donationSchema.partial().extend({
+  id: z.number().int().optional(),
+});
+
+export const donationQuerySchema = z.object({
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'PARTIAL_STOCKED', 'STOCKED']).optional(),
+  donorName: z.string().optional(),
+  channel: z.enum(['INDIVIDUAL', 'ORGANIZATION', 'ONLINE', 'EVENT', 'OTHER']).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+export const donationReviewSchema = z.object({
+  status: z.enum(['APPROVED', 'REJECTED']),
+  remark: z.string().optional(),
+});
+
+export const donationStockInItemSchema = z.object({
+  itemId: z.number().int(),
+  bookId: z.number().int().optional(),
+  categoryId: z.number().int(),
+  quantity: z.number().int().min(1, '入库数量至少1册'),
+  price: z.number().min(0, '价格不能为负数').optional(),
+  publisherId: z.number().int().optional().nullable(),
+  author: z.string().optional(),
+});
+
+export const donationStockInSchema = z.object({
+  items: z.array(donationStockInItemSchema).min(1, '至少选择一本图书入库'),
+});
