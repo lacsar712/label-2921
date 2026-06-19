@@ -51,6 +51,11 @@ const router = createRouter({
           name: 'CurrentBorrows',
           component: () => import('../views/CurrentBorrows.vue'),
         },
+        {
+          path: 'reservations',
+          name: 'Reservations',
+          component: () => import('../views/Reservations.vue'),
+        },
 
       ],
     },

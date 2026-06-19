@@ -43,6 +43,10 @@
           <el-icon><Reading /></el-icon>
           <span>当前借阅</span>
         </el-menu-item>
+        <el-menu-item index="/reservations">
+          <el-icon><Clock /></el-icon>
+          <span>预约管理</span>
+        </el-menu-item>
         <el-menu-item
           v-if="userStore.isAdmin"
           index="/system-settings"
@@ -116,6 +120,7 @@ import {
   User,
   Switch,
   Reading,
+  Clock,
   Setting,
   Expand,
   Fold
@@ -135,6 +140,7 @@ const currentRouteName = computed(() => {
     '/borrowers': '借阅用户',
     '/borrows': '借阅历史',
     '/current-borrows': '当前借阅',
+    '/reservations': '预约管理',
     '/system-settings': '系统管理'
   };
   return titles[route.path] || '首页';

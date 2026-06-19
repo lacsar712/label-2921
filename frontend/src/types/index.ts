@@ -30,3 +30,41 @@ export interface BorrowRecord {
   returnDate?: string;
   status: 'BORROWED' | 'RETURNED';
 }
+
+export type ReservationStatus = 'PENDING' | 'PENDING_PICKUP' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED';
+
+export interface ReservationStatusLog {
+  id: number;
+  reservationId: number;
+  fromStatus?: ReservationStatus;
+  toStatus: ReservationStatus;
+  operatorId?: number;
+  operator?: {
+    id: number;
+    username: string;
+  };
+  remark?: string;
+  createdAt: string;
+}
+
+export interface Reservation {
+  id: number;
+  bookId: number;
+  book: Book;
+  borrowerId: number;
+  borrower: {
+    id: number;
+    name: string;
+    phone?: string;
+    email?: string;
+  };
+  status: ReservationStatus;
+  queueNumber: number;
+  createdAt: string;
+  expiresAt?: string;
+  pickedUpAt?: string;
+  cancelledAt?: string;
+  position?: number;
+  aheadCount?: number;
+  statusLogs?: ReservationStatusLog[];
+}

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../utils/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { borrowSchema } from '../validators';
+import { ReservationStatus } from '@prisma/client';
 
 const router = Router();
 
@@ -74,23 +75,55 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Return a book
-router.post('/:id/return', authenticate, async (req, res) => {
+router.post('/:id/return', authenticate, async (req: AuthRequest, res) => {
   try {
     const record = await prisma.borrowRecord.findUnique({ where: { id: Number(req.params.id) } });
     if (!record || record.status === 'RETURNED') {
       return res.status(400).json({ message: 'Invalid record' });
     }
 
-    await prisma.$transaction([
-      prisma.borrowRecord.update({
+    await prisma.$transaction(async (tx) => {
+      await tx.borrowRecord.update({
         where: { id: record.id },
         data: { status: 'RETURNED', returnDate: new Date() },
-      }),
-      prisma.book.update({
+      });
+
+      await tx.book.update({
         where: { id: record.bookId },
         data: { stock: { increment: 1 } },
-      }),
-    ]);
+      });
+
+      const pendingReservation = await tx.reservation.findFirst({
+        where: {
+          bookId: record.bookId,
+          status: ReservationStatus.PENDING
+        },
+        orderBy: { createdAt: 'asc' }
+      });
+
+      if (pendingReservation) {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 3);
+
+        await tx.reservation.update({
+          where: { id: pendingReservation.id },
+          data: {
+            status: ReservationStatus.PENDING_PICKUP,
+            expiresAt
+          }
+        });
+
+        await tx.reservationStatusLog.create({
+          data: {
+            reservationId: pendingReservation.id,
+            fromStatus: ReservationStatus.PENDING,
+            toStatus: ReservationStatus.PENDING_PICKUP,
+            operatorId: req.user?.id,
+            remark: '图书归还，自动流转为待领取'
+          }
+        });
+      }
+    });
 
     res.json({ message: 'Book returned' });
   } catch (_error) {

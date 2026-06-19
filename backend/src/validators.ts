@@ -30,3 +30,12 @@ export const categorySchema = z.object({
 export const borrowSchema = z.object({
   bookId: z.number().int(),
 });
+
+export const reservationSchema = z.object({
+  bookId: z.number().int(),
+  borrowerId: z.number().int(),
+});
+
+export const reservationStatusSchema = z.object({
+  remark: z.string().optional(),
+});

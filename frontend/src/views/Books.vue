@@ -104,7 +104,7 @@
         </el-table-column>
         <el-table-column
           label="操作"
-          width="240"
+          width="320"
           fixed="right"
         >
           <template #default="{ row }">
@@ -115,6 +115,14 @@
               @click="handleBorrow(row)"
             >
               借阅
+            </el-button>
+            <el-button
+              link
+              type="warning"
+              :disabled="row.stock > 0"
+              @click="handleReserve(row)"
+            >
+              预约
             </el-button>
             <el-button
               link
@@ -333,6 +341,56 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 预约对话框 -->
+    <el-dialog
+      v-model="reserveDialogVisible"
+      title="图书预约"
+      width="400px"
+    >
+      <el-form
+        ref="reserveFormRef"
+        :model="reserveForm"
+        :rules="reserveRules"
+        label-width="100px"
+      >
+        <el-form-item label="图书">
+          <el-input
+            v-model="reserveForm.bookTitle"
+            disabled
+          />
+        </el-form-item>
+        <el-form-item
+          label="预约用户"
+          prop="borrowerId"
+        >
+          <el-select
+            v-model="reserveForm.borrowerId"
+            placeholder="请选择预约用户"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="borrower in borrowers"
+              :key="borrower.id"
+              :label="borrower.name"
+              :value="borrower.id"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reserveDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="warning"
+          :loading="reserveSubmitting"
+          @click="submitReserve"
+        >
+          确定预约
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -380,6 +438,19 @@ const returnForm = reactive({
   borrowId: undefined as number | undefined
 });
 const bookBorrowRecords = ref<any[]>([]);
+
+// 预约对话框相关
+const reserveDialogVisible = ref(false);
+const reserveSubmitting = ref(false);
+const reserveFormRef = ref<FormInstance | null>(null);
+const reserveForm = reactive({
+  bookId: undefined as number | undefined,
+  bookTitle: '',
+  borrowerId: undefined as number | undefined
+});
+const reserveRules = {
+  borrowerId: [{ required: true, message: '请选择预约用户', trigger: 'change' }]
+};
 
 const form = reactive({
   id: undefined,
@@ -495,6 +566,13 @@ const handleReturn = async (row: any) => {
   }
 };
 
+const handleReserve = (row: any) => {
+  reserveForm.bookId = row.id;
+  reserveForm.bookTitle = row.title;
+  reserveForm.borrowerId = undefined;
+  reserveDialogVisible.value = true;
+};
+
 const submitReturn = async () => {
   if (!returnForm.borrowId) {
     ElMessage.warning('请选择要归还的借阅记录');
@@ -534,6 +612,28 @@ const submitBorrow = async () => {
         ElMessage.error('借阅失败');
       } finally {
         borrowSubmitting.value = false;
+      }
+    }
+  });
+};
+
+const submitReserve = async () => {
+  if (!reserveFormRef.value) return;
+  await reserveFormRef.value.validate(async (valid: boolean) => {
+    if (valid) {
+      reserveSubmitting.value = true;
+      try {
+        const res: any = await api.post('/reservations', {
+          bookId: reserveForm.bookId,
+          borrowerId: reserveForm.borrowerId
+        });
+        ElMessage.success(`预约成功！排队号：${res.queueNumber}，当前第${res.position}位，前方${res.aheadCount}人`);
+        reserveDialogVisible.value = false;
+        fetchBooks();
+      } catch (error) {
+        ElMessage.error('预约失败');
+      } finally {
+        reserveSubmitting.value = false;
       }
     }
   });
