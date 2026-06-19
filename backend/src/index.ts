@@ -17,6 +17,7 @@ import fineRoutes from './routes/fines';
 import readingRoomRoutes from './routes/readingRooms';
 import seatReservationRoutes from './routes/seatReservations';
 import tagRoutes from './routes/tags';
+import authorRoutes from './routes/authors';
 import logger from './utils/logger';
 import { exec } from 'child_process';
 
@@ -47,6 +48,7 @@ app.use('/fines', fineRoutes);
 app.use('/reading-rooms', readingRoomRoutes);
 app.use('/seat-reservations', seatReservationRoutes);
 app.use('/tags', tagRoutes);
+app.use('/authors', authorRoutes);
 
 // Error Handling
 app.use((err: any, req: Request, res: Response, _next: NextFunction) => {

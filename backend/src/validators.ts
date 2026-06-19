@@ -19,6 +19,15 @@ export const bookSchema = z.object({
   price: z.number().min(0),
   stock: z.number().int().min(0),
   description: z.string().optional(),
+  authorIds: z.array(z.number().int()).optional(),
+  quickAuthors: z.array(z.object({
+    name: z.string().min(1, '作者姓名必填'),
+    nationality: z.string().optional(),
+    birthYear: z.number().int().optional(),
+    deathYear: z.number().int().optional(),
+    biography: z.string().optional(),
+    representativeWorks: z.string().optional(),
+  })).optional(),
 });
 
 export const bookUpdateSchema = bookSchema.partial().extend({ id: z.number().int().optional() });
@@ -121,4 +130,23 @@ export const bookTagSchema = z.object({
 export const tagMergeSchema = z.object({
   sourceTagIds: z.array(z.number().int()).min(2, '至少选择2个标签进行合并'),
   targetTagId: z.number().int(),
+});
+
+export const authorSchema = z.object({
+  name: z.string().min(1, '作者姓名必填'),
+  nationality: z.string().optional(),
+  birthYear: z.number().int().optional(),
+  deathYear: z.number().int().optional(),
+  biography: z.string().optional(),
+  representativeWorks: z.string().optional(),
+  pinyinInitial: z.string().optional(),
+  status: z.enum(['ACTIVE', 'DISABLED']).optional(),
+});
+
+export const authorUpdateSchema = authorSchema.partial();
+
+export const bookReviewSchema = z.object({
+  bookId: z.number().int(),
+  rating: z.number().int().min(1, '评分至少1分').max(5, '评分最多5分'),
+  comment: z.string().optional(),
 });

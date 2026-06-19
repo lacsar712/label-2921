@@ -12,6 +12,11 @@ enum Role {
   LIBRARIAN
 }
 
+enum AuthorStatus {
+  ACTIVE
+  DISABLED
+}
+
 model User {
   id                      Int                      @id @default(autoincrement())
   username                String                   @unique
@@ -33,12 +38,58 @@ model Borrower {
   updatedAt DateTime @updatedAt
   borrows   BorrowRecord[]
   fines     Fine[]
+  reviews   BookReview[]
 }
 
 model Category {
   id    Int    @id @default(autoincrement())
   name  String @unique
   books Book[]
+}
+
+model Author {
+  id             Int            @id @default(autoincrement())
+  name           String
+  nationality    String?
+  birthYear      Int?
+  deathYear      Int?
+  biography      String?
+  representativeWorks String?
+  pinyinInitial  String?
+  status         AuthorStatus   @default(ACTIVE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  bookAuthors    BookAuthor[]
+
+  @@unique([name, birthYear])
+  @@index([pinyinInitial])
+  @@index([nationality])
+  @@index([status])
+}
+
+model BookAuthor {
+  bookId      Int
+  authorId    Int
+  book        Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  author      Author @relation(fields: [authorId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@id([bookId, authorId])
+  @@index([authorId])
+}
+
+model BookReview {
+  id          Int       @id @default(autoincrement())
+  bookId      Int
+  book        Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  borrowerId  Int
+  borrower    Borrower  @relation(fields: [borrowerId], references: [id])
+  rating      Int
+  comment     String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([bookId, borrowerId])
+  @@index([bookId])
 }
 
 model Tag {
@@ -77,6 +128,8 @@ model Book {
   updatedAt   DateTime   @updatedAt
   borrows     BorrowRecord[]
   bookTags    BookTag[]
+  bookAuthors BookAuthor[]
+  reviews     BookReview[]
 }
 
 model BorrowRecord {

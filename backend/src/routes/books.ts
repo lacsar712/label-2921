@@ -1,13 +1,22 @@
 import { Router } from 'express';
 import prisma from '../utils/prisma';
 import { authenticate, authorize } from '../middleware/auth';
-import { Role } from '@prisma/client';
+import { Role, AuthorStatus } from '@prisma/client';
 import { bookSchema, bookUpdateSchema, bookTagSchema } from '../validators';
 
 const router = Router();
 
+function getPinyinInitial(name: string): string {
+  if (!name) return '';
+  const char = name.charAt(0);
+  const code = char.charCodeAt(0);
+  if (code >= 65 && code <= 90) return char;
+  if (code >= 97 && code <= 122) return char.toUpperCase();
+  return '#';
+}
+
 router.get('/', async (req, res) => {
-  const { categoryId, search, tagIds, tagFilterMode = 'intersection' } = req.query;
+  const { categoryId, search, tagIds, tagFilterMode = 'intersection', authorId } = req.query;
   
   const tagIdArray = tagIds 
     ? Array.isArray(tagIds) 
@@ -23,6 +32,13 @@ router.get('/', async (req, res) => {
         { author: { contains: String(search) } },
         { isbn: { contains: String(search) } },
       ]
+    } : {}),
+    ...(authorId ? {
+      bookAuthors: {
+        some: {
+          authorId: Number(authorId),
+        },
+      },
     } : {}),
   };
 
@@ -49,12 +65,16 @@ router.get('/', async (req, res) => {
       bookTags: {
         include: { tag: true },
       },
+      bookAuthors: {
+        include: { author: true },
+      },
     },
   });
 
   const booksWithTags = books.map((book) => ({
     ...book,
     tags: book.bookTags.map((bt) => bt.tag),
+    authors: book.bookAuthors.map((ba) => ba.author),
   }));
 
   res.json(booksWithTags);
@@ -68,13 +88,26 @@ router.get('/:id', async (req, res) => {
       bookTags: {
         include: { tag: true },
       },
+      bookAuthors: {
+        include: { author: true },
+      },
+      reviews: {
+        include: { borrower: true },
+        orderBy: { createdAt: 'desc' },
+      },
     },
   });
   if (!book) return res.status(404).json({ message: 'Book not found' });
   
+  const avgRating = book.reviews.length > 0
+    ? book.reviews.reduce((sum, r) => sum + r.rating, 0) / book.reviews.length
+    : 0;
+
   const bookWithTags = {
     ...book,
     tags: book.bookTags.map((bt) => bt.tag),
+    authors: book.bookAuthors.map((ba) => ba.author),
+    avgRating: parseFloat(avgRating.toFixed(2)),
   };
   
   res.json(bookWithTags);
@@ -82,7 +115,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
   try {
-    const { tagIds, ...bookData } = req.body;
+    const { tagIds, authorIds, quickAuthors, ...bookData } = req.body;
     const payload = bookSchema.parse({
       ...bookData,
       categoryId: Number(bookData.categoryId),
@@ -91,6 +124,42 @@ router.post('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (r
     });
 
     const tagIdsArray = Array.isArray(tagIds) ? tagIds.map(Number) : [];
+    const existingAuthorIds = Array.isArray(authorIds) ? authorIds.map(Number) : [];
+    const quickAuthorList = Array.isArray(quickAuthors) ? quickAuthors : [];
+
+    if (existingAuthorIds.length > 0) {
+      const disabledAuthors = await prisma.author.findMany({
+        where: {
+          id: { in: existingAuthorIds },
+          status: AuthorStatus.DISABLED,
+        },
+        select: { id: true, name: true },
+      });
+      if (disabledAuthors.length > 0) {
+        return res.status(400).json({
+          message: '以下作者已停用，不可挂靠新书：' + disabledAuthors.map((a) => a.name).join('、'),
+        });
+      }
+    }
+
+    let allAuthorIds = [...existingAuthorIds];
+
+    if (quickAuthorList.length > 0) {
+      for (const qa of quickAuthorList) {
+        const createdAuthor = await prisma.author.create({
+          data: {
+            name: qa.name,
+            nationality: qa.nationality,
+            birthYear: qa.birthYear,
+            deathYear: qa.deathYear,
+            biography: qa.biography,
+            representativeWorks: qa.representativeWorks,
+            pinyinInitial: getPinyinInitial(qa.name),
+          },
+        });
+        allAuthorIds.push(createdAuthor.id);
+      }
+    }
 
     const book = await prisma.book.create({
       data: {
@@ -102,10 +171,20 @@ router.post('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (r
               })),
             }
           : undefined,
+        bookAuthors: allAuthorIds.length > 0
+          ? {
+              create: allAuthorIds.map((authorId: number) => ({
+                author: { connect: { id: authorId } },
+              })),
+            }
+          : undefined,
       },
       include: {
         bookTags: {
           include: { tag: true },
+        },
+        bookAuthors: {
+          include: { author: true },
         },
       },
     });
@@ -113,6 +192,7 @@ router.post('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (r
     const bookWithTags = {
       ...book,
       tags: book.bookTags.map((bt) => bt.tag),
+      authors: book.bookAuthors.map((ba) => ba.author),
     };
 
     res.status(201).json(bookWithTags);
@@ -124,7 +204,7 @@ router.post('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (r
 router.put('/:id', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
   try {
     const bookId = Number(req.params.id);
-    const { tagIds, ...bookData } = req.body;
+    const { tagIds, authorIds, quickAuthors, ...bookData } = req.body;
     
     const payload = bookUpdateSchema.parse({
       ...bookData,
@@ -134,6 +214,50 @@ router.put('/:id', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async 
     });
 
     const tagIdsArray = Array.isArray(tagIds) ? tagIds.map(Number) : null;
+    const existingAuthorIds = Array.isArray(authorIds) ? authorIds.map(Number) : null;
+    const quickAuthorList = Array.isArray(quickAuthors) ? quickAuthors : [];
+
+    if (existingAuthorIds && existingAuthorIds.length > 0) {
+      const disabledAuthors = await prisma.author.findMany({
+        where: {
+          id: { in: existingAuthorIds },
+          status: AuthorStatus.DISABLED,
+        },
+        select: { id: true, name: true },
+      });
+      if (disabledAuthors.length > 0) {
+        return res.status(400).json({
+          message: '以下作者已停用，不可挂靠：' + disabledAuthors.map((a) => a.name).join('、'),
+        });
+      }
+    }
+
+    const bookAuthorData: any = {};
+    if (existingAuthorIds !== null) {
+      let allAuthorIds = [...existingAuthorIds];
+
+      if (quickAuthorList.length > 0) {
+        for (const qa of quickAuthorList) {
+          const createdAuthor = await prisma.author.create({
+            data: {
+              name: qa.name,
+              nationality: qa.nationality,
+              birthYear: qa.birthYear,
+              deathYear: qa.deathYear,
+              biography: qa.biography,
+              representativeWorks: qa.representativeWorks,
+              pinyinInitial: getPinyinInitial(qa.name),
+            },
+          });
+          allAuthorIds.push(createdAuthor.id);
+        }
+      }
+
+      bookAuthorData.deleteMany = {};
+      bookAuthorData.create = allAuthorIds.map((authorId: number) => ({
+        author: { connect: { id: authorId } },
+      }));
+    }
 
     const book = await prisma.book.update({
       where: { id: bookId },
@@ -147,10 +271,16 @@ router.put('/:id', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async 
             })),
           },
         } : {}),
+        ...(Object.keys(bookAuthorData).length > 0 ? {
+          bookAuthors: bookAuthorData,
+        } : {}),
       },
       include: {
         bookTags: {
           include: { tag: true },
+        },
+        bookAuthors: {
+          include: { author: true },
         },
       },
     });
@@ -158,6 +288,7 @@ router.put('/:id', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async 
     const bookWithTags = {
       ...book,
       tags: book.bookTags.map((bt) => bt.tag),
+      authors: book.bookAuthors.map((ba) => ba.author),
     };
 
     res.json(bookWithTags);
@@ -171,6 +302,8 @@ router.delete('/:id', authenticate, authorize([Role.ADMIN]), async (req, res) =>
     const bookId = Number(req.params.id);
     await prisma.$transaction([
       prisma.bookTag.deleteMany({ where: { bookId } }),
+      prisma.bookAuthor.deleteMany({ where: { bookId } }),
+      prisma.bookReview.deleteMany({ where: { bookId } }),
       prisma.book.delete({ where: { id: bookId } }),
     ]);
     res.json({ message: 'Book deleted' });

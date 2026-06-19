@@ -92,6 +92,115 @@ async function main() {
     skipDuplicates: true,
   });
 
+  // Create Authors
+  console.log('Generating authors...');
+  const authorsData = [
+    { name: '张三', nationality: '中国', birthYear: 1965, deathYear: null, biography: '当代著名作家，中国作协成员，作品多次获得国家级文学奖项。', representativeWorks: '《春秋》、《岁月长河》', pinyinInitial: 'Z' },
+    { name: '李四', nationality: '中国', birthYear: 1972, deathYear: null, biography: '历史学者，北京大学历史学系教授，专攻唐宋史研究。', representativeWorks: '《唐代政治制度研究》', pinyinInitial: 'L' },
+    { name: '王五', nationality: '中国', birthYear: 1958, deathYear: 2020, biography: '已故著名翻译家，精通英法德三门外语，译著等身。', representativeWorks: '《百年孤独》中译本、《追忆似水年华》中译本', pinyinInitial: 'W' },
+    { name: '赵六', nationality: '中国', birthYear: 1980, deathYear: null, biography: '青年计算机科学家，清华大学计算机系副教授，AI领域专家。', representativeWorks: '《深度学习原理与实践》', pinyinInitial: 'Z' },
+    { name: '钱七', nationality: '中国', birthYear: 1975, deathYear: null, biography: '经济学博士，中国社会科学院研究员，宏观经济政策专家。', representativeWorks: '《中国经济转型论》', pinyinInitial: 'Q' },
+    { name: '孙八', nationality: '中国', birthYear: 1968, deathYear: null, biography: '心理学教授，北京师范大学心理学院院长，临床心理学家。', representativeWorks: '《认知心理学导论》', pinyinInitial: 'S' },
+    { name: '周九', nationality: '中国', birthYear: 1955, deathYear: null, biography: '美术学院教授，著名油画家，作品多次入选国际艺术展。', representativeWorks: '油画《晨曦》、《秋韵》', pinyinInitial: 'Z' },
+    { name: '吴十', nationality: '中国', birthYear: 1983, deathYear: null, biography: '新锐科幻作家，作品被翻译成多国语言出版。', representativeWorks: '《星际迷航之中国故事》', pinyinInitial: 'W' },
+    { name: 'Robert Smith', nationality: '美国', birthYear: 1960, deathYear: null, biography: 'MIT计算机科学教授，图灵奖获得者，算法设计领域权威。', representativeWorks: '《算法导论》合著者', pinyinInitial: 'R' },
+    { name: 'John Doe', nationality: '英国', birthYear: 1970, deathYear: null, biography: '牛津大学文学教授，莎士比亚研究专家。', representativeWorks: '《莎士比亚戏剧研究》', pinyinInitial: 'J' },
+    { name: 'Emily White', nationality: '法国', birthYear: 1985, deathYear: null, biography: '当代女性作家，龚古尔文学奖获得者。', representativeWorks: '《巴黎的冬天》', pinyinInitial: 'E' },
+  ];
+
+  const authors = [];
+  for (const authorData of authorsData) {
+    try {
+      const author = await prisma.author.upsert({
+        where: { name_birthYear: { name: authorData.name, birthYear: authorData.birthYear } },
+        update: {},
+        create: authorData,
+      });
+      authors.push(author);
+    } catch (e) {
+      console.log(`Author ${authorData.name} exists, skipping`);
+    }
+  }
+
+  // Associate books with authors
+  console.log('Associating books with authors...');
+  const allBooksForAuthors = await prisma.book.findMany();
+  
+  for (let i = 0; i < allBooksForAuthors.length; i++) {
+    const book = allBooksForAuthors[i];
+    const authorIndex = i % authors.length;
+    try {
+      await prisma.bookAuthor.upsert({
+        where: {
+          bookId_authorId: { bookId: book.id, authorId: authors[authorIndex].id },
+        },
+        update: {},
+        create: {
+          bookId: book.id,
+          authorId: authors[authorIndex].id,
+        },
+      });
+      
+      if (i % 7 === 0 && authorIndex + 1 < authors.length) {
+        await prisma.bookAuthor.upsert({
+          where: {
+            bookId_authorId: { bookId: book.id, authorId: authors[(authorIndex + 1) % authors.length].id },
+          },
+          update: {},
+          create: {
+            bookId: book.id,
+            authorId: authors[(authorIndex + 1) % authors.length].id,
+          },
+        });
+      }
+    } catch (e) {
+      // Ignore duplicates
+    }
+  }
+
+  // Create Book Reviews
+  console.log('Generating book reviews...');
+  const booksForReviews = await prisma.book.findMany({ take: 40 });
+  const borrowersForReviews = await prisma.borrower.findMany();
+  const existingReviews = await prisma.bookReview.count();
+  
+  if (existingReviews === 0 && booksForReviews.length > 0 && borrowersForReviews.length > 0) {
+    const reviewsToCreate = [];
+    for (let i = 0; i < 80; i++) {
+      const book = booksForReviews[i % booksForReviews.length];
+      const borrower = borrowersForReviews[Math.floor(Math.random() * borrowersForReviews.length)];
+      
+      const exists = reviewsToCreate.find(
+        (r) => r.bookId === book.id && r.borrowerId === borrower.id,
+      );
+      if (exists) continue;
+      
+      const comments = [
+        '这本书内容丰富，值得一读！',
+        '作者文笔流畅，故事引人入胜。',
+        '专业知识扎实，受益匪浅。',
+        '观点独到，令人耳目一新。',
+        '适合入门者，讲解清晰。',
+        '装帧精美，纸质优良。',
+        '翻译准确，读起来很顺畅。',
+        '逻辑严密，论证有力。',
+      ];
+      
+      reviewsToCreate.push({
+        bookId: book.id,
+        borrowerId: borrower.id,
+        rating: Math.floor(Math.random() * 3) + 3, // 3-5 stars
+        comment: Math.random() > 0.3 ? comments[Math.floor(Math.random() * comments.length)] : null,
+      });
+    }
+    
+    await prisma.bookReview.createMany({
+      data: reviewsToCreate,
+      skipDuplicates: true,
+    });
+    console.log(`Created ${reviewsToCreate.length} book reviews.`);
+  }
+
   // Create Tags
   console.log('Generating tags...');
   const tagsData = [
