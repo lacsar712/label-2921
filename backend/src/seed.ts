@@ -92,6 +92,57 @@ async function main() {
     skipDuplicates: true,
   });
 
+  // Create Tags
+  console.log('Generating tags...');
+  const tagsData = [
+    { name: '热门推荐', color: '#f56c6c', description: '图书馆热门推荐图书', sortOrder: 1 },
+    { name: '新书上架', color: '#e6a23c', description: '新到馆的图书', sortOrder: 2 },
+    { name: '经典必读', color: '#67c23a', description: '经典必读书目', sortOrder: 3 },
+    { name: '考试必备', color: '#409eff', description: '考试复习必备书籍', sortOrder: 4 },
+    { name: '轻松阅读', color: '#909399', description: '休闲轻松读物', sortOrder: 5 },
+    { name: '深度思考', color: '#9b59b6', description: '深度思考类书籍', sortOrder: 6 },
+    { name: '实践指南', color: '#16a085', description: '实用技术实践指南', sortOrder: 7 },
+    { name: '获奖作品', color: '#f39c12', description: '获得各类奖项的作品', sortOrder: 8 },
+  ];
+
+  const tags = [];
+  for (const tagData of tagsData) {
+    const tag = await prisma.tag.upsert({
+      where: { name: tagData.name },
+      update: {},
+      create: tagData,
+    });
+    tags.push(tag);
+  }
+
+  // Add tags to books
+  console.log('Associating tags with books...');
+  const booksForTags = await prisma.book.findMany();
+  
+  for (let i = 0; i < booksForTags.length; i++) {
+    const book = booksForTags[i];
+    const numTags = Math.floor(Math.random() * 3) + 1; // 1-3 tags per book
+    const shuffledTags = [...tags].sort(() => Math.random() - 0.5);
+    const selectedTags = shuffledTags.slice(0, numTags);
+    
+    for (const tag of selectedTags) {
+      try {
+        await prisma.bookTag.upsert({
+          where: {
+            bookId_tagId: { bookId: book.id, tagId: tag.id },
+          },
+          update: {},
+          create: {
+            bookId: book.id,
+            tagId: tag.id,
+          },
+        });
+      } catch (e) {
+        // Ignore duplicates
+      }
+    }
+  }
+
   // Create Borrow Records for the last 7 days
   console.log('Generating borrow records for the last 7 days...');
   const allBooks = await prisma.book.findMany({ take: 50 });

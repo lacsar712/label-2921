@@ -41,19 +41,42 @@ model Category {
   books Book[]
 }
 
+model Tag {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  color       String    @default("#409eff")
+  description String?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  bookTags    BookTag[]
+}
+
+model BookTag {
+  bookId    Int
+  tagId     Int
+  book      Book   @relation(fields: [bookId], references: [id])
+  tag       Tag    @relation(fields: [tagId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@id([bookId, tagId])
+  @@index([tagId])
+}
+
 model Book {
-  id          Int      @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   title       String
   author      String
-  isbn        String   @unique
-  stock       Int      @default(0)
+  isbn        String     @unique
+  stock       Int        @default(0)
   price       Float
   description String?
   categoryId  Int
-  category    Category @relation(fields: [categoryId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  category    Category   @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   borrows     BorrowRecord[]
+  bookTags    BookTag[]
 }
 
 model BorrowRecord {

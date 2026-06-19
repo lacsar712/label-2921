@@ -104,3 +104,21 @@ export const seatBanSchema = z.object({
 export const seatReservationStatusSchema = z.object({
   remark: z.string().optional(),
 });
+
+export const tagSchema = z.object({
+  name: z.string().min(1, '标签名称必填'),
+  color: z.string().min(1, '标签颜色必填').optional(),
+  description: z.string().optional(),
+  sortOrder: z.number().int().optional(),
+});
+
+export const tagUpdateSchema = tagSchema.partial();
+
+export const bookTagSchema = z.object({
+  tagIds: z.array(z.number().int()),
+});
+
+export const tagMergeSchema = z.object({
+  sourceTagIds: z.array(z.number().int()).min(2, '至少选择2个标签进行合并'),
+  targetTagId: z.number().int(),
+});

@@ -3,6 +3,19 @@ export interface Category {
   name: string;
 }
 
+export interface Tag {
+  id: number;
+  name: string;
+  color: string;
+  description?: string;
+  sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
+  _count?: { bookTags: number };
+  bookCount?: number;
+  recentBorrowCount?: number;
+}
+
 export interface Book {
   id: number;
   title: string;
@@ -13,6 +26,7 @@ export interface Book {
   description?: string;
   categoryId: number;
   category: Category;
+  tags?: Tag[];
   createdAt: string;
   updatedAt: string;
 }

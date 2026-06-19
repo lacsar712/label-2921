@@ -2,113 +2,183 @@ import { Router } from 'express';
 import prisma from '../utils/prisma';
 import { authenticate, authorize } from '../middleware/auth';
 import { Role } from '@prisma/client';
-import { bookSchema, bookUpdateSchema } from '../validators';
+import { bookSchema, bookUpdateSchema, bookTagSchema } from '../validators';
 
 const router = Router();
 
-/**
- * @route GET /api/books
- * @desc Get all books with optional category filter and search
- * @access Public
- */
 router.get('/', async (req, res) => {
-  const { categoryId, search } = req.query;
+  const { categoryId, search, tagIds, tagFilterMode = 'intersection' } = req.query;
+  
+  const tagIdArray = tagIds 
+    ? Array.isArray(tagIds) 
+      ? tagIds.map(Number) 
+      : String(tagIds).split(',').map(Number).filter(Boolean)
+    : [];
+
+  const where: any = {
+    ...(categoryId ? { categoryId: Number(categoryId) } : {}),
+    ...(search ? {
+      OR: [
+        { title: { contains: String(search) } },
+        { author: { contains: String(search) } },
+        { isbn: { contains: String(search) } },
+      ]
+    } : {}),
+  };
+
+  if (tagIdArray.length > 0) {
+    if (tagFilterMode === 'union') {
+      where.bookTags = {
+        some: {
+          tagId: { in: tagIdArray },
+        },
+      };
+    } else {
+      where.AND = tagIdArray.map((tagId: number) => ({
+        bookTags: {
+          some: { tagId },
+        },
+      }));
+    }
+  }
+
   const books = await prisma.book.findMany({
-    where: {
-      ...(categoryId ? { categoryId: Number(categoryId) } : {}),
-      ...(search ? {
-        OR: [
-          { title: { contains: String(search) } },
-          { author: { contains: String(search) } },
-          { isbn: { contains: String(search) } },
-        ]
-      } : {}),
+    where,
+    include: {
+      category: true,
+      bookTags: {
+        include: { tag: true },
+      },
     },
-    include: { category: true },
   });
-  res.json(books);
+
+  const booksWithTags = books.map((book) => ({
+    ...book,
+    tags: book.bookTags.map((bt) => bt.tag),
+  }));
+
+  res.json(booksWithTags);
 });
 
-/**
- * @route GET /api/books/:id
- * @desc Get a single book by ID
- * @access Public
- */
 router.get('/:id', async (req, res) => {
   const book = await prisma.book.findUnique({
     where: { id: Number(req.params.id) },
-    include: { category: true },
+    include: {
+      category: true,
+      bookTags: {
+        include: { tag: true },
+      },
+    },
   });
   if (!book) return res.status(404).json({ message: 'Book not found' });
-  res.json(book);
+  
+  const bookWithTags = {
+    ...book,
+    tags: book.bookTags.map((bt) => bt.tag),
+  };
+  
+  res.json(bookWithTags);
 });
 
-/**
- * @route POST /api/books
- * @desc Create a new book
- * @access Admin, Librarian
- */
 router.post('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
   try {
+    const { tagIds, ...bookData } = req.body;
     const payload = bookSchema.parse({
-      ...req.body,
-      categoryId: Number(req.body.categoryId),
-      price: Number(req.body.price),
-      stock: Number(req.body.stock),
+      ...bookData,
+      categoryId: Number(bookData.categoryId),
+      price: Number(bookData.price),
+      stock: Number(bookData.stock),
     });
+
+    const tagIdsArray = Array.isArray(tagIds) ? tagIds.map(Number) : [];
+
     const book = await prisma.book.create({
-      data: payload,
+      data: {
+        ...payload,
+        bookTags: tagIdsArray.length > 0
+          ? {
+              create: tagIdsArray.map((tagId: number) => ({
+                tag: { connect: { id: tagId } },
+              })),
+            }
+          : undefined,
+      },
+      include: {
+        bookTags: {
+          include: { tag: true },
+        },
+      },
     });
-    res.status(201).json(book);
+
+    const bookWithTags = {
+      ...book,
+      tags: book.bookTags.map((bt) => bt.tag),
+    };
+
+    res.status(201).json(bookWithTags);
   } catch (_error) {
     res.status(400).json({ message: 'Failed to create book', error: (_error as any).message });
   }
 });
 
-/**
- * @route PUT /api/books/:id
- * @desc Update an existing book
- * @access Admin, Librarian
- */
 router.put('/:id', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
   try {
+    const bookId = Number(req.params.id);
+    const { tagIds, ...bookData } = req.body;
+    
     const payload = bookUpdateSchema.parse({
-      ...req.body,
-      price: req.body.price !== undefined ? Number(req.body.price) : undefined,
-      stock: req.body.stock !== undefined ? Number(req.body.stock) : undefined,
-      categoryId: req.body.categoryId !== undefined ? Number(req.body.categoryId) : undefined,
+      ...bookData,
+      price: bookData.price !== undefined ? Number(bookData.price) : undefined,
+      stock: bookData.stock !== undefined ? Number(bookData.stock) : undefined,
+      categoryId: bookData.categoryId !== undefined ? Number(bookData.categoryId) : undefined,
     });
+
+    const tagIdsArray = Array.isArray(tagIds) ? tagIds.map(Number) : null;
+
     const book = await prisma.book.update({
-      where: { id: Number(req.params.id) },
-      data: payload,
+      where: { id: bookId },
+      data: {
+        ...payload,
+        ...(tagIdsArray !== null ? {
+          bookTags: {
+            deleteMany: {},
+            create: tagIdsArray.map((tagId: number) => ({
+              tag: { connect: { id: tagId } },
+            })),
+          },
+        } : {}),
+      },
+      include: {
+        bookTags: {
+          include: { tag: true },
+        },
+      },
     });
-    res.json(book);
+
+    const bookWithTags = {
+      ...book,
+      tags: book.bookTags.map((bt) => bt.tag),
+    };
+
+    res.json(bookWithTags);
   } catch (_error) {
     res.status(400).json({ message: 'Failed to update book', error: (_error as any).message });
   }
 });
 
-/**
- * @route DELETE /api/books/:id
- * @desc Delete a book
- * @access Admin
- */
 router.delete('/:id', authenticate, authorize([Role.ADMIN]), async (req, res) => {
   try {
-    await prisma.book.delete({
-      where: { id: Number(req.params.id) },
-    });
+    const bookId = Number(req.params.id);
+    await prisma.$transaction([
+      prisma.bookTag.deleteMany({ where: { bookId } }),
+      prisma.book.delete({ where: { id: bookId } }),
+    ]);
     res.json({ message: 'Book deleted' });
   } catch (_error) {
     res.status(400).json({ message: 'Failed to delete book' });
   }
 });
 
-/**
- * @route GET /api/books/:id/borrow-count
- * @desc Get current borrow count for a specific book
- * @access Admin, Librarian
- */
 router.get('/:id/borrow-count', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
   try {
     const count = await prisma.borrowRecord.count({
@@ -123,7 +193,6 @@ router.get('/:id/borrow-count', authenticate, authorize([Role.ADMIN, Role.LIBRAR
   }
 });
 
-// Get book current borrow records
 router.get('/:id/current-borrows', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
   try {
     const records = await prisma.borrowRecord.findMany({

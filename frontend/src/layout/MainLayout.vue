@@ -31,6 +31,10 @@
           <el-icon><Collection /></el-icon>
           <span>分类管理</span>
         </el-menu-item>
+        <el-menu-item index="/tags">
+          <el-icon><PriceTag /></el-icon>
+          <span>标签管理</span>
+        </el-menu-item>
         <el-menu-item index="/borrowers">
           <el-icon><User /></el-icon>
           <span>借阅用户</span>
@@ -133,6 +137,7 @@ import {
   DataBoard,
   Notebook,
   Collection,
+  PriceTag,
   User,
   Switch,
   Reading,
@@ -157,6 +162,7 @@ const currentRouteName = computed(() => {
     '/': '仪表盘',
     '/books': '图书管理',
     '/categories': '分类管理',
+    '/tags': '标签管理',
     '/borrowers': '借阅用户',
     '/borrows': '借阅历史',
     '/current-borrows': '当前借阅',

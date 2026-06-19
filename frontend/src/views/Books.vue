@@ -1,163 +1,253 @@
 <template>
   <div class="books-container">
-    <el-card shadow="hover">
-      <div class="header-actions">
-        <el-input
-          v-model="search"
-          placeholder="搜索书名、作者或 ISBN"
-          style="width: 300px"
-          clearable
-          @clear="fetchBooks"
-          @keyup.enter="fetchBooks"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-        </el-input>
-        <div class="right">
-          <el-select
-            v-model="filterCategory"
-            placeholder="全部分类"
-            clearable
-            style="width: 150px; margin-right: 10px"
-            @change="fetchBooks"
+    <div class="content-wrapper">
+      <el-aside class="sidebar" width="260px">
+        <el-card shadow="hover" class="tag-sidebar">
+          <div class="sidebar-header">
+            <span class="sidebar-title">标签筛选</span>
+            <el-button
+              v-if="selectedTagIds.length > 0"
+              link
+              type="primary"
+              size="small"
+              @click="clearTagFilter"
+            >
+              清除
+            </el-button>
+          </div>
+          <div class="tag-list">
+            <div
+              v-for="tag in tagsWithStats"
+              :key="tag.id"
+              class="tag-item"
+              :class="{ active: selectedTagIds.includes(tag.id) }"
+              @click="toggleTag(tag.id)"
+            >
+              <div class="tag-left">
+                <span
+                  class="tag-color-dot"
+                  :style="{ backgroundColor: tag.color }"
+                />
+                <span class="tag-name">{{ tag.name }}</span>
+              </div>
+              <div class="tag-right">
+                <span class="tag-count">{{ tag.bookCount || tag._count?.bookTags || 0 }}</span>
+                <span
+                  v-if="tag.recentBorrowCount"
+                  class="tag-hot"
+                >
+                  <el-icon><TrendCharts /></el-icon>
+                  {{ tag.recentBorrowCount }}
+                </span>
+              </div>
+            </div>
+            <div v-if="tagsWithStats.length === 0" class="empty-tags">
+              暂无标签
+            </div>
+          </div>
+          <div class="filter-mode">
+            <el-radio-group
+              v-model="filterMode"
+              size="small"
+              @change="fetchBooks"
+            >
+              <el-radio-button value="intersection">
+                交集
+              </el-radio-button>
+              <el-radio-button value="union">
+                并集
+              </el-radio-button>
+            </el-radio-group>
+          </div>
+        </el-card>
+      </el-aside>
+
+      <el-main class="main-content">
+        <el-card shadow="hover">
+          <div class="header-actions">
+            <el-input
+              v-model="search"
+              placeholder="搜索书名、作者或 ISBN"
+              style="width: 300px"
+              clearable
+              @clear="fetchBooks"
+              @keyup.enter="fetchBooks"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+            <div class="right">
+              <el-select
+                v-model="filterCategory"
+                placeholder="全部分类"
+                clearable
+                style="width: 150px; margin-right: 10px"
+                @change="fetchBooks"
+              >
+                <el-option
+                  v-for="cat in categories"
+                  :key="cat.id"
+                  :label="cat.name"
+                  :value="cat.id"
+                />
+              </el-select>
+              <el-button
+                v-if="userStore.isLibrarian"
+                type="primary"
+                :icon="Plus"
+                @click="handleAdd"
+              >
+                添加图书
+              </el-button>
+            </div>
+          </div>
+
+          <el-table
+            v-loading="loading"
+            :data="books"
+            style="width: 100%; margin-top: 20px"
+            border
+            stripe
           >
-            <el-option
-              v-for="cat in categories"
-              :key="cat.id"
-              :label="cat.name"
-              :value="cat.id"
+            <el-table-column
+              prop="title"
+              label="书名"
+              min-width="180"
+              show-overflow-tooltip
             />
-          </el-select>
-          <el-button
-            v-if="userStore.isLibrarian"
-            type="primary"
-            :icon="Plus"
-            @click="handleAdd"
-          >
-            添加图书
-          </el-button>
-        </div>
-      </div>
+            <el-table-column
+              prop="author"
+              label="作者"
+              width="100"
+            />
+            <el-table-column
+              prop="isbn"
+              label="ISBN"
+              width="130"
+            />
+            <el-table-column
+              prop="category.name"
+              label="分类"
+              width="100"
+            />
+            <el-table-column
+              label="标签"
+              min-width="200"
+            >
+              <template #default="{ row }">
+                <div class="book-tags">
+                  <el-tag
+                    v-for="tag in row.tags?.slice(0, 3)"
+                    :key="tag.id"
+                    :color="tag.color"
+                    effect="dark"
+                    size="small"
+                    style="margin-right: 4px; margin-bottom: 4px"
+                  >
+                    {{ tag.name }}
+                  </el-tag>
+                  <el-tag
+                    v-if="row.tags?.length > 3"
+                    type="info"
+                    size="small"
+                  >
+                    +{{ row.tags.length - 3 }}
+                  </el-tag>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="price"
+              label="价格"
+              width="80"
+            >
+              <template #default="{ row }">
+                ¥{{ row.price.toFixed(2) }}
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="stock"
+              label="库存"
+              width="80"
+            >
+              <template #default="{ row }">
+                <el-tag :type="row.stock > 0 ? 'success' : 'danger'">
+                  {{ row.stock }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="在借数量"
+              width="90"
+            >
+              <template #default="{ row }">
+                <el-tag
+                  v-if="row.borrowedCount > 0"
+                  type="warning"
+                >
+                  {{ row.borrowedCount }}
+                </el-tag>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="操作"
+              width="300"
+              fixed="right"
+            >
+              <template #default="{ row }">
+                <el-button
+                  link
+                  type="primary"
+                  :disabled="row.stock <= 0"
+                  @click="handleBorrow(row)"
+                >
+                  借阅
+                </el-button>
+                <el-button
+                  link
+                  type="warning"
+                  :disabled="row.stock > 0"
+                  @click="handleReserve(row)"
+                >
+                  预约
+                </el-button>
+                <el-button
+                  link
+                  type="success"
+                  :disabled="row.borrowedCount === 0"
+                  @click="handleReturn(row)"
+                >
+                  归还
+                </el-button>
+                <el-button
+                  v-if="userStore.isLibrarian"
+                  link
+                  type="primary"
+                  @click="handleEdit(row)"
+                >
+                  编辑
+                </el-button>
+                <el-button
+                  v-if="userStore.isAdmin"
+                  link
+                  type="danger"
+                  @click="handleDelete(row)"
+                >
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-main>
+    </div>
 
-      <el-table
-        v-loading="loading"
-        :data="books"
-        style="width: 100%; margin-top: 20px"
-        border
-        stripe
-      >
-        <el-table-column
-          prop="title"
-          label="书名"
-          min-width="150"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          prop="author"
-          label="作者"
-          width="120"
-        />
-        <el-table-column
-          prop="isbn"
-          label="ISBN"
-          width="140"
-        />
-        <el-table-column
-          prop="category.name"
-          label="分类"
-          width="120"
-        />
-        <el-table-column
-          prop="price"
-          label="价格"
-          width="100"
-        >
-          <template #default="{ row }">
-            ¥{{ row.price.toFixed(2) }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="stock"
-          label="库存"
-          width="100"
-        >
-          <template #default="{ row }">
-            <el-tag :type="row.stock > 0 ? 'success' : 'danger'">
-              {{ row.stock }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="在借数量"
-          width="100"
-        >
-          <template #default="{ row }">
-            <el-tag
-              v-if="row.borrowedCount > 0"
-              type="warning"
-            >
-              {{ row.borrowedCount }}
-            </el-tag>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="操作"
-          width="320"
-          fixed="right"
-        >
-          <template #default="{ row }">
-            <el-button
-              link
-              type="primary"
-              :disabled="row.stock <= 0"
-              @click="handleBorrow(row)"
-            >
-              借阅
-            </el-button>
-            <el-button
-              link
-              type="warning"
-              :disabled="row.stock > 0"
-              @click="handleReserve(row)"
-            >
-              预约
-            </el-button>
-            <el-button
-              link
-              type="success"
-              :disabled="row.borrowedCount === 0"
-              @click="handleReturn(row)"
-            >
-              归还
-            </el-button>
-            <el-button
-              v-if="userStore.isLibrarian"
-              link
-              type="primary"
-              @click="handleEdit(row)"
-            >
-              编辑
-            </el-button>
-            <el-button
-              v-if="userStore.isAdmin"
-              link
-              type="danger"
-              @click="handleDelete(row)"
-            >
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-
-    <!-- Book Dialog -->
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="500px"
+      width="550px"
     >
       <el-form
         ref="formRef"
@@ -199,6 +289,54 @@
               :value="cat.id"
             />
           </el-select>
+        </el-form-item>
+        <el-form-item
+          label="标签"
+          prop="tagIds"
+        >
+          <el-select
+            v-model="form.tagIds"
+            multiple
+            filterable
+            placeholder="请选择标签"
+            style="width: 100%"
+            :reserve-keyword="false"
+          >
+            <el-option
+              v-for="tag in allTags"
+              :key="tag.id"
+              :label="tag.name"
+              :value="tag.id"
+            >
+              <span style="display: flex; align-items: center; gap: 8px;">
+                <span
+                  class="color-dot"
+                  :style="{ backgroundColor: tag.color }"
+                />
+                {{ tag.name }}
+              </span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item
+          v-if="hotTags.length > 0"
+          label="热门标签"
+        >
+          <div class="hot-tags">
+            <span
+              v-for="tag in hotTags"
+              :key="tag.id"
+              class="hot-tag-item"
+              :class="{ selected: form.tagIds?.includes(tag.id) }"
+              @click="toggleHotTag(tag.id)"
+            >
+              <span
+                class="hot-tag-color"
+                :style="{ backgroundColor: tag.color }"
+              />
+              {{ tag.name }}
+            </span>
+          </div>
         </el-form-item>
         <el-form-item
           label="价格"
@@ -246,7 +384,6 @@
       </template>
     </el-dialog>
 
-    <!-- 借阅对话框 -->
     <el-dialog
       v-model="borrowDialogVisible"
       title="图书借阅"
@@ -296,7 +433,6 @@
       </template>
     </el-dialog>
 
-    <!-- 归还对话框 -->
     <el-dialog
       v-model="returnDialogVisible"
       title="图书归还"
@@ -342,7 +478,6 @@
       </template>
     </el-dialog>
 
-    <!-- 预约对话框 -->
     <el-dialog
       v-model="reserveDialogVisible"
       title="图书预约"
@@ -396,19 +531,25 @@
 
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue';
-import { Search, Plus } from '@element-plus/icons-vue';
+import { Search, Plus, TrendCharts } from '@element-plus/icons-vue';
 import api from '../api';
 import { useUserStore } from '../store/user';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance } from 'element-plus';
+import type { Tag, Book } from '../types';
 
 const userStore = useUserStore();
-const books = ref<any[]>([]);
+const books = ref<Book[]>([]);
 const categories = ref<any[]>([]);
 const borrowers = ref<any[]>([]);
+const allTags = ref<Tag[]>([]);
+const hotTags = ref<Tag[]>([]);
+const tagsWithStats = ref<Tag[]>([]);
 const loading = ref(false);
 const search = ref('');
 const filterCategory = ref('');
+const selectedTagIds = ref<number[]>([]);
+const filterMode = ref<'intersection' | 'union'>('intersection');
 
 const dialogVisible = ref(false);
 const dialogTitle = ref('添加图书');
@@ -416,7 +557,6 @@ const submitLoading = ref(false);
 const formRef = ref<FormInstance | null>(null);
 const isEdit = ref(false);
 
-// 借阅对话框相关
 const borrowDialogVisible = ref(false);
 const borrowSubmitting = ref(false);
 const borrowFormRef = ref<FormInstance | null>(null);
@@ -429,7 +569,6 @@ const borrowRules = {
   borrowerId: [{ required: true, message: '请选择借阅用户', trigger: 'change' }]
 };
 
-// 归还对话框相关
 const returnDialogVisible = ref(false);
 const returnSubmitting = ref(false);
 const returnForm = reactive({
@@ -439,7 +578,6 @@ const returnForm = reactive({
 });
 const bookBorrowRecords = ref<any[]>([]);
 
-// 预约对话框相关
 const reserveDialogVisible = ref(false);
 const reserveSubmitting = ref(false);
 const reserveFormRef = ref<FormInstance | null>(null);
@@ -453,11 +591,12 @@ const reserveRules = {
 };
 
 const form = reactive({
-  id: undefined,
+  id: undefined as number | undefined,
   title: '',
   author: '',
   isbn: '',
-  categoryId: undefined,
+  categoryId: undefined as number | undefined,
+  tagIds: [] as number[],
   price: 0,
   stock: 0,
   description: ''
@@ -484,12 +623,17 @@ const rules = {
 const fetchBooks = async () => {
   loading.value = true;
   try {
-    const res: any = await api.get('/books', {
-      params: { search: search.value, categoryId: filterCategory.value }
-    });
-    // 获取每本书的在借数量
+    const params: any = {
+      search: search.value,
+      categoryId: filterCategory.value,
+      tagFilterMode: filterMode.value,
+    };
+    if (selectedTagIds.value.length > 0) {
+      params.tagIds = selectedTagIds.value.join(',');
+    }
+    const res: any = await api.get('/books', { params });
     const booksWithBorrowCount = await Promise.all(
-      res.map(async (book: any) => {
+      res.map(async (book: Book) => {
         const borrowCountRes: any = await api.get(`/books/${book.id}/borrow-count`);
         return { ...book, borrowedCount: borrowCountRes.count || 0 };
       })
@@ -505,35 +649,27 @@ const fetchCategories = async () => {
   categories.value = res;
 };
 
-const handleAdd = () => {
-  isEdit.value = false;
-  dialogTitle.value = '添加图书';
-  Object.assign(form, { id: undefined, title: '', author: '', isbn: '', categoryId: undefined, price: 0, stock: 0, description: '' });
-  dialogVisible.value = true;
+const fetchTags = async () => {
+  const res: any = await api.get('/tags');
+  allTags.value = res;
 };
 
-const handleEdit = (row: any) => {
-  isEdit.value = true;
-  dialogTitle.value = '编辑图书';
-  Object.assign(form, {
-    id: row.id,
-    title: row.title,
-    author: row.author,
-    isbn: row.isbn,
-    categoryId: row.categoryId,
-    price: row.price,
-    stock: row.stock,
-    description: row.description
-  });
-  dialogVisible.value = true;
+const fetchHotTags = async () => {
+  try {
+    const res: any = await api.get('/tags/hot', { params: { limit: 8 } });
+    hotTags.value = res;
+  } catch (error) {
+    console.error('Failed to fetch hot tags:', error);
+  }
 };
 
-const handleDelete = (row: any) => {
-  ElMessageBox.confirm('确定要删除这本书吗？', '警告', { type: 'warning' }).then(async () => {
-    await api.delete(`/books/${row.id}`);
-    ElMessage.success('删除成功');
-    fetchBooks();
-  });
+const fetchTagsWithStats = async () => {
+  try {
+    const res: any = await api.get('/tags/with-stats');
+    tagsWithStats.value = res;
+  } catch (error) {
+    console.error('Failed to fetch tags with stats:', error);
+  }
 };
 
 const fetchBorrowers = async () => {
@@ -545,19 +681,85 @@ const fetchBorrowers = async () => {
   }
 };
 
-const handleBorrow = (row: any) => {
+const toggleTag = (tagId: number) => {
+  const index = selectedTagIds.value.indexOf(tagId);
+  if (index > -1) {
+    selectedTagIds.value.splice(index, 1);
+  } else {
+    selectedTagIds.value.push(tagId);
+  }
+  fetchBooks();
+};
+
+const clearTagFilter = () => {
+  selectedTagIds.value = [];
+  fetchBooks();
+};
+
+const toggleHotTag = (tagId: number) => {
+  const index = form.tagIds.indexOf(tagId);
+  if (index > -1) {
+    form.tagIds.splice(index, 1);
+  } else {
+    form.tagIds.push(tagId);
+  }
+};
+
+const handleAdd = () => {
+  isEdit.value = false;
+  dialogTitle.value = '添加图书';
+  Object.assign(form, {
+    id: undefined,
+    title: '',
+    author: '',
+    isbn: '',
+    categoryId: undefined,
+    tagIds: [],
+    price: 0,
+    stock: 0,
+    description: ''
+  });
+  dialogVisible.value = true;
+};
+
+const handleEdit = (row: Book) => {
+  isEdit.value = true;
+  dialogTitle.value = '编辑图书';
+  Object.assign(form, {
+    id: row.id,
+    title: row.title,
+    author: row.author,
+    isbn: row.isbn,
+    categoryId: row.categoryId,
+    tagIds: row.tags?.map((t) => t.id) || [],
+    price: row.price,
+    stock: row.stock,
+    description: row.description || ''
+  });
+  dialogVisible.value = true;
+};
+
+const handleDelete = (row: Book) => {
+  ElMessageBox.confirm('确定要删除这本书吗？', '警告', { type: 'warning' }).then(async () => {
+    await api.delete(`/books/${row.id}`);
+    ElMessage.success('删除成功');
+    fetchBooks();
+    fetchTagsWithStats();
+  });
+};
+
+const handleBorrow = (row: Book) => {
   borrowForm.bookId = row.id;
   borrowForm.bookTitle = row.title;
   borrowForm.borrowerId = undefined;
   borrowDialogVisible.value = true;
 };
 
-const handleReturn = async (row: any) => {
+const handleReturn = async (row: Book) => {
   returnForm.bookId = row.id;
   returnForm.bookTitle = row.title;
   returnForm.borrowId = undefined;
   returnDialogVisible.value = true;
-  // 获取该图书的未归还借阅记录
   try {
     const res: any = await api.get(`/books/${row.id}/current-borrows`);
     bookBorrowRecords.value = res;
@@ -566,7 +768,7 @@ const handleReturn = async (row: any) => {
   }
 };
 
-const handleReserve = (row: any) => {
+const handleReserve = (row: Book) => {
   reserveForm.bookId = row.id;
   reserveForm.bookTitle = row.title;
   reserveForm.borrowerId = undefined;
@@ -584,6 +786,7 @@ const submitReturn = async () => {
     ElMessage.success('归还成功');
     returnDialogVisible.value = false;
     fetchBooks();
+    fetchTagsWithStats();
   } catch (error) {
     ElMessage.error('归还失败');
   } finally {
@@ -608,6 +811,7 @@ const submitBorrow = async () => {
         ElMessage.success('借阅成功');
         borrowDialogVisible.value = false;
         fetchBooks();
+        fetchTagsWithStats();
       } catch (error) {
         ElMessage.error('借阅失败');
       } finally {
@@ -645,7 +849,7 @@ const submitForm = async () => {
     if (valid) {
       submitLoading.value = true;
       try {
-        if (isEdit.value) {
+        if (isEdit.value && form.id) {
           await api.put(`/books/${form.id}`, form);
           ElMessage.success('更新成功');
         } else {
@@ -654,6 +858,7 @@ const submitForm = async () => {
         }
         dialogVisible.value = false;
         fetchBooks();
+        fetchTagsWithStats();
       } finally {
         submitLoading.value = false;
       }
@@ -664,14 +869,187 @@ const submitForm = async () => {
 onMounted(() => {
   fetchBooks();
   fetchCategories();
+  fetchTags();
+  fetchHotTags();
+  fetchTagsWithStats();
   fetchBorrowers();
 });
 </script>
 
 <style scoped lang="scss">
+.books-container {
+  width: 100%;
+}
+
+.content-wrapper {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.sidebar {
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.main-content {
+  flex: 1;
+  padding: 0;
+  min-width: 0;
+}
+
+.tag-sidebar {
+  .sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #ebeef5;
+  }
+
+  .sidebar-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #303133;
+  }
+
+  .tag-list {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  .tag-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: #f5f7fa;
+    }
+
+    &.active {
+      background-color: #ecf5ff;
+    }
+  }
+
+  .tag-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tag-color-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .tag-name {
+    font-size: 14px;
+    color: #303133;
+  }
+
+  .tag-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tag-count {
+    font-size: 12px;
+    color: #909399;
+    background-color: #f4f4f5;
+    padding: 2px 6px;
+    border-radius: 10px;
+  }
+
+  .tag-hot {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 12px;
+    color: #e6a23c;
+  }
+
+  .empty-tags {
+    text-align: center;
+    color: #909399;
+    font-size: 13px;
+    padding: 20px 0;
+  }
+
+  .filter-mode {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #ebeef5;
+    text-align: center;
+  }
+}
+
 .header-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  .right {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.book-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.color-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.hot-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hot-tag-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid #dcdfe6;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #409eff;
+    color: #409eff;
+  }
+
+  &.selected {
+    background-color: #ecf5ff;
+    border-color: #409eff;
+    color: #409eff;
+  }
+
+  .hot-tag-color {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
 }
 </style>
