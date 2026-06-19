@@ -110,13 +110,18 @@ async function main() {
       for (let j = 0; j < dailyCount; j++) {
         const book = allBooks[Math.floor(Math.random() * allBooks.length)];
         const borrower = allBorrowers[Math.floor(Math.random() * allBorrowers.length)];
-        
+        const isReturned = Math.random() > 0.3;
+        const dueDate = new Date(date);
+        dueDate.setDate(dueDate.getDate() + 30);
+        const returnDate = isReturned ? new Date(date.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000) : null;
+
         borrowRecords.push({
           bookId: book.id,
           borrowerId: borrower.id,
           borrowDate: date,
-          status: Math.random() > 0.3 ? 'RETURNED' : 'BORROWED',
-          returnDate: Math.random() > 0.3 ? new Date(date.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000) : null,
+          dueDate,
+          status: isReturned ? 'RETURNED' : 'BORROWED',
+          returnDate,
         });
       }
     }

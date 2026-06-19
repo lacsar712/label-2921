@@ -27,8 +27,88 @@ export interface BorrowRecord {
     name: string;
   };
   borrowDate: string;
+  dueDate: string;
   returnDate?: string;
   status: 'BORROWED' | 'RETURNED';
+  fine?: FineInfo;
+}
+
+export type FineStatus = 'PENDING' | 'PARTIAL' | 'PAID' | 'WAIVED';
+
+export interface FineInfo {
+  overdueDays: number;
+  totalAmount: number;
+  dailyRate: number;
+  graceDays: number;
+  lastCalculated?: string;
+}
+
+export interface FinePayment {
+  id: number;
+  fineId: number;
+  amount: number;
+  receiptNo?: string;
+  operatorId?: number;
+  operator?: {
+    id: number;
+    username: string;
+  };
+  remark?: string;
+  createdAt: string;
+}
+
+export interface Fine {
+  id: number;
+  borrowRecordId: number;
+  borrowRecord: {
+    id: number;
+    book: Book;
+    borrowDate: string;
+    dueDate: string;
+    returnDate?: string;
+  };
+  borrowerId: number;
+  borrower: {
+    id: number;
+    name: string;
+    phone?: string;
+    email?: string;
+  };
+  totalAmount: number;
+  paidAmount: number;
+  waivedAmount: number;
+  overdueDays: number;
+  dailyRate: number;
+  graceDays: number;
+  status: FineStatus;
+  lastCalculated?: string;
+  receiptNo?: string;
+  waiveRemark?: string;
+  waiveOperatorId?: number;
+  waiveOperator?: {
+    id: number;
+    username: string;
+  };
+  payments: FinePayment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FineSettings {
+  dailyRate: number;
+  fineCap: number;
+  graceDays: number;
+  maxBorrowDays: number;
+}
+
+export interface FineStats {
+  counts: {
+    pending: number;
+    partial: number;
+    paid: number;
+    waived: number;
+  };
+  totalPendingAmount: number;
 }
 
 export type ReservationStatus = 'PENDING' | 'PENDING_PICKUP' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED';

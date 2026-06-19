@@ -47,6 +47,14 @@
           <el-icon><Clock /></el-icon>
           <span>预约管理</span>
         </el-menu-item>
+        <el-menu-item index="/fines">
+          <el-icon><Money /></el-icon>
+          <span>罚金管理</span>
+        </el-menu-item>
+        <el-menu-item index="/fine-ledger">
+          <el-icon><Document /></el-icon>
+          <span>罚金台账</span>
+        </el-menu-item>
         <el-menu-item
           v-if="userStore.isAdmin"
           index="/system-settings"
@@ -123,7 +131,9 @@ import {
   Clock,
   Setting,
   Expand,
-  Fold
+  Fold,
+  Money,
+  Document
 } from '@element-plus/icons-vue';
 
 const route = useRoute();
@@ -141,6 +151,8 @@ const currentRouteName = computed(() => {
     '/borrows': '借阅历史',
     '/current-borrows': '当前借阅',
     '/reservations': '预约管理',
+    '/fines': '罚金管理',
+    '/fine-ledger': '罚金台账',
     '/system-settings': '系统管理'
   };
   return titles[route.path] || '首页';

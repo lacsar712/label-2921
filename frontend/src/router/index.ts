@@ -56,6 +56,16 @@ const router = createRouter({
           name: 'Reservations',
           component: () => import('../views/Reservations.vue'),
         },
+        {
+          path: 'fines',
+          name: 'Fines',
+          component: () => import('../views/Fines.vue'),
+        },
+        {
+          path: 'fine-ledger',
+          name: 'FineLedger',
+          component: () => import('../views/FineLedger.vue'),
+        },
 
       ],
     },

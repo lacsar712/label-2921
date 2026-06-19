@@ -13,12 +13,15 @@ enum Role {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String
-  role      Role     @default(LIBRARIAN)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                      Int                      @id @default(autoincrement())
+  username                String                   @unique
+  password                String
+  role                    Role                     @default(LIBRARIAN)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  waivedFines             Fine[]                   @relation("WaivedFines")
+  finePayments            FinePayment[]
+  reservationStatusLogs   ReservationStatusLog[]
 }
 
 model Borrower {
@@ -29,6 +32,7 @@ model Borrower {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   borrows   BorrowRecord[]
+  fines     Fine[]
 }
 
 model Category {
@@ -59,8 +63,10 @@ model BorrowRecord {
   borrowerId Int
   borrower   Borrower  @relation(fields: [borrowerId], references: [id])
   borrowDate DateTime  @default(now())
+  dueDate    DateTime
   returnDate DateTime?
   status     String    @default("BORROWED") // BORROWED, RETURNED
+  fines      Fine[]
 }
 
 enum ReservationStatus {
@@ -96,4 +102,54 @@ model ReservationStatusLog {
   operator      User?              @relation(fields: [operatorId], references: [id])
   remark        String?
   createdAt     DateTime           @default(now())
+}
+
+enum FineStatus {
+  PENDING
+  PARTIAL
+  PAID
+  WAIVED
+}
+
+model Fine {
+  id             Int          @id @default(autoincrement())
+  borrowRecordId Int
+  borrowRecord   BorrowRecord @relation(fields: [borrowRecordId], references: [id])
+  borrowerId     Int
+  borrower       Borrower     @relation(fields: [borrowerId], references: [id])
+  totalAmount    Float        @default(0)
+  paidAmount     Float        @default(0)
+  waivedAmount   Float        @default(0)
+  overdueDays    Int          @default(0)
+  dailyRate      Float        @default(0)
+  graceDays      Int          @default(0)
+  status         FineStatus   @default(PENDING)
+  lastCalculated DateTime?
+  receiptNo      String?
+  waiveRemark    String?
+  waiveOperatorId Int?
+  waiveOperator  User?        @relation("WaivedFines", fields: [waiveOperatorId], references: [id])
+  payments       FinePayment[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model FinePayment {
+  id         Int      @id @default(autoincrement())
+  fineId     Int
+  fine       Fine     @relation(fields: [fineId], references: [id])
+  amount     Float
+  receiptNo  String?
+  operatorId Int?
+  operator   User?    @relation(fields: [operatorId], references: [id])
+  remark     String?
+  createdAt  DateTime @default(now())
+}
+
+model SystemSettings {
+  id             Int      @id @default(autoincrement())
+  key            String   @unique
+  value          String
+  description    String?
+  updatedAt      DateTime @updatedAt
 }

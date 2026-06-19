@@ -39,3 +39,28 @@ export const reservationSchema = z.object({
 export const reservationStatusSchema = z.object({
   remark: z.string().optional(),
 });
+
+export const finePaymentSchema = z.object({
+  amount: z.number().min(0.01, '支付金额必须大于0'),
+  receiptNo: z.string().optional(),
+  remark: z.string().optional(),
+});
+
+export const fineWaiveSchema = z.object({
+  amount: z.number().min(0.01, '减免金额必须大于0').optional(),
+  remark: z.string().min(1, '减免审批说明必填'),
+});
+
+export const fineSettingsSchema = z.object({
+  dailyRate: z.number().min(0, '日费率不能小于0'),
+  fineCap: z.number().min(0, '罚金上限不能小于0'),
+  graceDays: z.number().int().min(0, '宽限天数不能小于0'),
+  maxBorrowDays: z.number().int().min(1, '借阅期限至少1天'),
+});
+
+export const fineExportSchema = z.object({
+  borrowerId: z.number().int().optional(),
+  bookId: z.number().int().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});

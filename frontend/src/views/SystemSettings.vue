@@ -4,7 +4,6 @@
       v-model="activeTab"
       type="border-card"
     >
-      <!-- 系统用户管理 Tab -->
       <el-tab-pane
         label="系统用户管理"
         name="users"
@@ -85,7 +84,104 @@
         </div>
       </el-tab-pane>
 
-      <!-- 系统基本信息 Tab -->
+      <el-tab-pane
+        label="罚金配置"
+        name="fine-settings"
+      >
+        <div class="tab-content">
+          <div class="header-actions">
+            <h3>罚金规则配置</h3>
+          </div>
+
+          <el-alert
+            title="配置说明"
+            type="info"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 20px"
+          >
+            <template #default>
+              <div>罚金计算规则：逾期天数 = 当前日期 - 到期日期 - 宽限天数；累计罚金 = 逾期天数 × 日费率；不超过罚金上限（上限为0则不限制）。</div>
+            </template>
+          </el-alert>
+
+          <el-form
+            ref="fineFormRef"
+            :model="fineSettings"
+            :rules="fineRules"
+            label-width="140px"
+            style="max-width: 600px; margin-top: 16px"
+          >
+            <el-form-item
+              label="借阅期限"
+              prop="maxBorrowDays"
+            >
+              <el-input-number
+                v-model="fineSettings.maxBorrowDays"
+                :min="1"
+                :max="365"
+                style="width: 200px"
+              />
+              <span class="form-tip">天（新借阅的图书默认到期日）</span>
+            </el-form-item>
+
+            <el-form-item
+              label="宽限天数"
+              prop="graceDays"
+            >
+              <el-input-number
+                v-model="fineSettings.graceDays"
+                :min="0"
+                :max="30"
+                style="width: 200px"
+              />
+              <span class="form-tip">天（超过到期日但未超出宽限期不计罚金）</span>
+            </el-form-item>
+
+            <el-form-item
+              label="日费率"
+              prop="dailyRate"
+            >
+              <el-input-number
+                v-model="fineSettings.dailyRate"
+                :min="0"
+                :max="100"
+                :precision="2"
+                :step="0.1"
+                style="width: 200px"
+              />
+              <span class="form-tip">元/天（每逾期一天产生的罚金）</span>
+            </el-form-item>
+
+            <el-form-item
+              label="罚金上限"
+              prop="fineCap"
+            >
+              <el-input-number
+                v-model="fineSettings.fineCap"
+                :min="0"
+                :max="10000"
+                :precision="2"
+                :step="5"
+                style="width: 200px"
+              />
+              <span class="form-tip">元（单次借阅累计罚金上限，0表示不限制）</span>
+            </el-form-item>
+
+            <el-form-item>
+              <el-button
+                type="primary"
+                :loading="fineSubmitting"
+                @click="handleSaveFineSettings"
+              >
+                保存配置
+              </el-button>
+              <el-button @click="loadFineSettings">重置</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+      </el-tab-pane>
+
       <el-tab-pane
         label="系统基本信息"
         name="settings"
@@ -112,8 +208,8 @@
             <el-descriptions-item label="系统公告">
               {{ settingsForm.announcement || '-' }}
             </el-descriptions-item>
-            <el-descriptions-item label="最大借阅天数">
-              {{ settingsForm.maxBorrowDays }} 天
+            <el-descriptions-item label="借阅期限">
+              {{ fineSettings.maxBorrowDays }} 天
             </el-descriptions-item>
             <el-descriptions-item label="最大借阅数量">
               {{ settingsForm.maxBorrowCount }} 本
@@ -123,7 +219,6 @@
       </el-tab-pane>
     </el-tabs>
 
-    <!-- 新增/编辑系统用户对话框 -->
     <el-dialog
       v-model="userDialogVisible"
       :title="userDialogMode === 'create' ? '新增系统用户' : '编辑系统用户'"
@@ -203,10 +298,10 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import api from '../api';
 import type { FormInstance, FormRules } from 'element-plus';
+import type { FineSettings } from '../types';
 
 const activeTab = ref('users');
 
-// 系统用户管理相关
 const users = ref<any[]>([]);
 const usersLoading = ref(false);
 const userDialogVisible = ref(false);
@@ -214,33 +309,45 @@ const userDialogMode = ref<'create' | 'edit'>('create');
 const userSubmitting = ref(false);
 const userFormRef = ref<FormInstance>();
 
-
-
 const adminCount = computed(() => {
-  return users.value.filter(u => u.role === 'ADMIN').length;
+  return users.value.filter((u) => u.role === 'ADMIN').length;
 });
 
 const userForm = reactive({
   username: '',
   password: '',
-  role: 'LIBRARIAN'
+  role: 'LIBRARIAN',
 });
 
 const userRules: FormRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, message: '用户名至少3个字符', trigger: 'blur' }
+    { min: 3, message: '用户名至少3个字符', trigger: 'blur' },
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码至少6个字符', trigger: 'blur' }
+    { min: 6, message: '密码至少6个字符', trigger: 'blur' },
   ],
-  role: [
-    { required: true, message: '请选择角色', trigger: 'change' }
-  ]
+  role: [{ required: true, message: '请选择角色', trigger: 'change' }],
 };
 
-// 系统设置相关
+const fineSettings = reactive<FineSettings>({
+  dailyRate: 0.5,
+  fineCap: 50,
+  graceDays: 3,
+  maxBorrowDays: 30,
+});
+
+const fineSubmitting = ref(false);
+const fineFormRef = ref<FormInstance>();
+
+const fineRules: FormRules = {
+  dailyRate: [{ required: true, message: '请输入日费率', trigger: 'blur' }],
+  fineCap: [{ required: true, message: '请输入罚金上限', trigger: 'blur' }],
+  graceDays: [{ required: true, message: '请输入宽限天数', trigger: 'blur' }],
+  maxBorrowDays: [{ required: true, message: '请输入借阅期限', trigger: 'blur' }],
+};
+
 const settingsForm = reactive({
   systemName: '图书管理系统',
   libraryName: '默认图书馆',
@@ -248,7 +355,7 @@ const settingsForm = reactive({
   contactEmail: '',
   announcement: '',
   maxBorrowDays: 30,
-  maxBorrowCount: 5
+  maxBorrowCount: 5,
 });
 
 const fetchUsers = async () => {
@@ -259,6 +366,31 @@ const fetchUsers = async () => {
   } finally {
     usersLoading.value = false;
   }
+};
+
+const loadFineSettings = async () => {
+  try {
+    const res: any = await api.get('/fines/settings');
+    Object.assign(fineSettings, res);
+  } catch (error) {
+    console.error('Failed to load fine settings:', error);
+  }
+};
+
+const handleSaveFineSettings = async () => {
+  if (!fineFormRef.value) return;
+  await fineFormRef.value.validate(async (valid) => {
+    if (!valid) return;
+    fineSubmitting.value = true;
+    try {
+      await api.put('/fines/settings', fineSettings);
+      ElMessage.success('罚金配置已保存');
+    } catch (error) {
+      ElMessage.error('保存失败');
+    } finally {
+      fineSubmitting.value = false;
+    }
+  });
 };
 
 const canDeleteUser = (user: any) => {
@@ -287,15 +419,15 @@ const resetUserForm = () => {
 
 const handleSubmitUser = async () => {
   if (!userFormRef.value) return;
-  
+
   await userFormRef.value.validate(async (valid) => {
     if (!valid) return;
-    
+
     userSubmitting.value = true;
     try {
       const data: any = {
         username: userForm.username,
-        role: userForm.role
+        role: userForm.role,
       };
       if (userForm.password) {
         data.password = userForm.password;
@@ -305,13 +437,13 @@ const handleSubmitUser = async () => {
         await api.post('/users', data);
         ElMessage.success('创建成功');
       } else {
-        const user = users.value.find(u => u.username === userForm.username);
+        const user = users.value.find((u) => u.username === userForm.username);
         if (user) {
           await api.put(`/users/${user.id}`, data);
           ElMessage.success('更新成功');
         }
       }
-      
+
       userDialogVisible.value = false;
       fetchUsers();
     } catch (error) {
@@ -335,10 +467,10 @@ const handleDeleteUser = async (user: any) => {
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        type: 'warning'
-      }
+        type: 'warning',
+      },
     );
-    
+
     await api.delete(`/users/${user.id}`);
     ElMessage.success('删除成功');
     fetchUsers();
@@ -348,8 +480,6 @@ const handleDeleteUser = async (user: any) => {
     }
   }
 };
-
-
 
 const loadSettings = () => {
   const saved = localStorage.getItem('systemSettings');
@@ -373,6 +503,7 @@ const formatDate = (dateStr: string) => {
 onMounted(() => {
   fetchUsers();
   loadSettings();
+  loadFineSettings();
 });
 </script>
 
@@ -392,7 +523,7 @@ onMounted(() => {
   .form-tip {
     font-size: 12px;
     color: #909399;
-    margin-top: 4px;
+    margin-left: 8px;
   }
 
   .empty-state {
