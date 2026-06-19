@@ -1,5 +1,7 @@
 <template>
   <div class="dashboard">
+    <AnnouncementCarousel />
+
     <el-row :gutter="20">
       <el-col
         v-for="(val, key) in summaryMap"
@@ -115,6 +117,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import * as echarts from 'echarts';
 import api from '../api';
 import { Notebook, User, Switch, Collection } from '@element-plus/icons-vue';
+import AnnouncementCarousel from '../components/AnnouncementCarousel.vue';
 
 const summary = ref<any>({});
 const lowStockBooks = ref<any[]>([]);

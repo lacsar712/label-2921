@@ -408,3 +408,49 @@ export interface EligibleBorrowRecord {
 export interface ReviewEditConfig {
   editDays: number;
 }
+
+export type AnnouncementStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'ARCHIVED';
+export type AnnouncementScope = 'ALL' | 'ADMIN' | 'LIBRARIAN';
+
+export interface Announcement {
+  id: number;
+  title: string;
+  summary?: string;
+  content: string;
+  contentType?: string;
+  coverImage?: string;
+  scope: AnnouncementScope;
+  status: AnnouncementStatus;
+  isPinned: boolean;
+  pinWeight: number;
+  publishAt?: string;
+  expireAt?: string;
+  createdById?: number;
+  createdBy?: {
+    id: number;
+    username: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AnnouncementListResponse {
+  data: Announcement[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface AnnouncementForm {
+  title: string;
+  summary?: string;
+  content: string;
+  contentType?: string;
+  coverImage?: string;
+  scope: AnnouncementScope;
+  status: AnnouncementStatus;
+  isPinned: boolean;
+  pinWeight: number;
+  publishAt?: string | null;
+  expireAt?: string | null;
+}

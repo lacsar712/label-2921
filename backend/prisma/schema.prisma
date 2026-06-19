@@ -357,3 +357,41 @@ model SeatReservation {
 
   @@unique([seatId, date, timeSlot])
 }
+
+enum AnnouncementStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AnnouncementScope {
+  ALL
+  ADMIN
+  LIBRARIAN
+}
+
+model Announcement {
+  id          Int                @id @default(autoincrement())
+  title       String
+  summary     String?
+  content     String
+  contentType String?
+  coverImage  String?
+  scope       AnnouncementScope @default(ALL)
+  status      AnnouncementStatus @default(DRAFT)
+  isPinned    Boolean          @default(false)
+  pinWeight   Int              @default(0)
+  publishAt   DateTime?
+  expireAt    DateTime?
+  createdById Int?
+  createdBy   User?              @relation(fields: [createdById], references: [id])
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([status])
+  @@index([scope])
+  @@index([isPinned])
+  @@index([publishAt])
+  @@index([expireAt])
+}

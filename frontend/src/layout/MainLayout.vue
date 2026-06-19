@@ -75,6 +75,10 @@
           <el-icon><ChatDotSquare /></el-icon>
           <span>评价管理</span>
         </el-menu-item>
+        <el-menu-item index="/announcements">
+          <el-icon><Bell /></el-icon>
+          <span>公告中心</span>
+        </el-menu-item>
         <el-menu-item
           v-if="userStore.isAdmin"
           index="/system-settings"
@@ -157,7 +161,8 @@ import {
   Document,
   OfficeBuilding,
   Calendar,
-  ChatDotSquare
+  ChatDotSquare,
+  Bell
 } from '@element-plus/icons-vue';
 
 const route = useRoute();
@@ -182,6 +187,7 @@ const currentRouteName = computed(() => {
     '/reading-rooms': '阅览室管理',
     '/seat-reservations': '座位预约',
     '/reviews': '评价管理',
+    '/announcements': '公告中心',
     '/system-settings': '系统管理'
   };
   if (route.path.startsWith('/reading-rooms/')) return '阅览室详情';

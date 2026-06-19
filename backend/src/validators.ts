@@ -183,3 +183,28 @@ export const publisherSchema = z.object({
 });
 
 export const publisherUpdateSchema = publisherSchema.partial();
+
+export const announcementSchema = z.object({
+  title: z.string().min(1, '公告标题必填'),
+  summary: z.string().optional(),
+  content: z.string().min(1, '公告内容必填'),
+  contentType: z.string().optional(),
+  coverImage: z.string().optional(),
+  scope: z.enum(['ALL', 'ADMIN', 'LIBRARIAN']).optional(),
+  status: z.enum(['DRAFT', 'PENDING', 'PUBLISHED', 'ARCHIVED']).optional(),
+  isPinned: z.boolean().optional(),
+  pinWeight: z.number().int().optional(),
+  publishAt: z.string().optional().nullable(),
+  expireAt: z.string().optional().nullable(),
+});
+
+export const announcementUpdateSchema = announcementSchema.partial();
+
+export const announcementQuerySchema = z.object({
+  status: z.enum(['DRAFT', 'PENDING', 'PUBLISHED', 'ARCHIVED']).optional(),
+  scope: z.enum(['ALL', 'ADMIN', 'LIBRARIAN']).optional(),
+  keyword: z.string().optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
+  isPinned: z.coerce.boolean().optional(),
+});

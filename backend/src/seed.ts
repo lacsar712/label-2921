@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Role, ZoneType, SeatStatus, TimeSlot, SeatReservationStatus, CooperationLevel } from '@prisma/client';
+import { Role, ZoneType, SeatStatus, TimeSlot, SeatReservationStatus, CooperationLevel, AnnouncementStatus, AnnouncementScope } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from './utils/prisma';
 
@@ -435,6 +435,201 @@ async function main() {
     await prisma.seatReservation.createMany({ data: reservationsToCreate });
     console.log('Seat reservations created.');
   }
+
+  // Create Sample Announcements
+  console.log('Generating sample announcements...');
+  const adminUser = await prisma.user.findUnique({ where: { username: 'admin' } });
+  const adminId = adminUser?.id;
+
+  const announcementsData = [
+    {
+      title: '系统升级通知',
+      summary: '图书馆管理系统将于本周末进行系统升级维护，届时部分功能可能无法使用。',
+      content: `# 系统升级通知
+
+尊敬的读者：
+
+为提升系统性能和用户体验，**图书馆管理系统**将于本周末进行系统升级维护。
+
+## 升级时间
+2024年1月20日（周六）22:00 - 1月21日（周日）06:00
+
+## 升级内容
+- 系统性能优化
+- 新增公告中心功能
+- 修复已知问题
+- 安全漏洞修复
+
+## 注意事项
+1. 升级期间系统将暂停服务
+2. 请提前完成相关操作
+3. 如有紧急事项请联系管理员
+
+感谢您的理解与支持！
+
+> 图书馆管理团队`,
+      scope: AnnouncementScope.ALL,
+      status: AnnouncementStatus.PUBLISHED,
+      isPinned: true,
+      pinWeight: 100,
+      publishAt: new Date()
+    },
+    {
+      title: '寒假借阅规则调整',
+      summary: '寒假期间图书借阅期限将延长，欢迎各位读者前来借阅。',
+      content: `# 寒假借阅规则调整
+
+各位读者：
+
+寒假将至，为方便大家假期阅读，图书馆对借阅规则做出如下调整：
+
+## 调整内容
+- 借阅期限延长至 **60天**
+- 每人最大借阅数量提升至 **10本**
+- 预约图书保留时间延长至 **7天**
+
+## 适用时间
+2024年1月15日 - 2024年2月28日
+
+## 温馨提示
+1. 请爱护图书，避免损坏
+2. 到期前可通过线上续借
+3. 逾期仍将产生罚金
+
+祝大家寒假愉快！`,
+      scope: AnnouncementScope.ALL,
+      status: AnnouncementStatus.PUBLISHED,
+      isPinned: true,
+      pinWeight: 80,
+      publishAt: new Date()
+    },
+    {
+      title: '新书上架：计算机类',
+      summary: '本周新到一批计算机类图书，包括人工智能、前端开发、数据库等方向。',
+      content: `# 新书上架通知
+
+本周新增以下计算机类图书：
+
+## 人工智能方向
+- 《深度学习》（Ian Goodfellow）
+- 《机器学习实战》（Peter Harrington）
+- 《神经网络与深度学习》
+
+## 前端开发方向
+- 《Vue.js 设计与实现》
+- 《React 设计原理》
+- 《现代前端工程化实践》
+
+## 数据库方向
+- 《MySQL 必知必会》
+- 《Redis 设计与实现》
+- 《数据库系统概念》
+
+欢迎各位读者前来借阅！`,
+      scope: AnnouncementScope.ALL,
+      status: AnnouncementStatus.PUBLISHED,
+      isPinned: false,
+      pinWeight: 0,
+      publishAt: new Date()
+    },
+    {
+      title: '管理员工作会议通知',
+      summary: '定于下周一召开管理员工作会议，请相关人员准时参加。',
+      content: `# 管理员工作会议通知
+
+各位管理员：
+
+兹定于下周一召开管理员工作会议，具体安排如下：
+
+## 会议时间
+2024年1月22日（周一）上午 9:00 - 11:00
+
+## 会议地点
+图书馆三楼会议室
+
+## 会议内容
+1. 上月工作总结
+2. 本月工作计划
+3. 新系统使用培训
+4. 问题讨论与交流
+
+请准时参加！`,
+      scope: AnnouncementScope.ADMIN,
+      status: AnnouncementStatus.PUBLISHED,
+      isPinned: false,
+      pinWeight: 0,
+      publishAt: new Date()
+    },
+    {
+      title: '图书管理员培训',
+      summary: '本周六将进行图书管理员业务培训，请相关人员准时参加。',
+      content: `# 图书管理员培训通知
+
+各位图书管理员：
+
+为提升业务水平，定于本周六进行业务培训。
+
+## 培训时间
+2024年1月20日（周六）下午 14:00 - 17:00
+
+## 培训地点
+图书馆二楼电子阅览室
+
+## 培训内容
+1. 新书编目流程
+2. 读者服务规范
+3. 系统操作技巧
+4. 常见问题处理
+
+请提前安排好工作，准时参加。`,
+      scope: AnnouncementScope.LIBRARIAN,
+      status: AnnouncementStatus.PUBLISHED,
+      isPinned: false,
+      pinWeight: 0,
+      publishAt: new Date()
+    },
+    {
+      title: '春节闭馆安排',
+      summary: '春节期间图书馆闭馆时间安排，请读者合理安排借阅时间。',
+      content: `# 春节闭馆安排
+
+尊敬的读者：
+
+根据国家法定节假日安排，结合图书馆实际情况，2024年春节期间闭馆安排如下：
+
+## 闭馆时间
+2024年2月9日（除夕）- 2月17日（正月初八）
+
+## 开放时间
+2024年2月18日（正月初九）起正常开放
+
+## 温馨提示
+1. 请提前归还到期图书
+2. 假期借阅的图书可顺延至节后归还
+3. 线上服务照常运行
+
+祝大家新春快乐！`,
+      scope: AnnouncementScope.ALL,
+      status: AnnouncementStatus.DRAFT,
+      isPinned: false,
+      pinWeight: 0
+    }
+  ];
+
+  for (const annData of announcementsData) {
+    const exists = await prisma.announcement.findFirst({
+      where: { title: annData.title }
+    });
+    if (!exists) {
+      await prisma.announcement.create({
+        data: {
+          ...annData,
+          createdById: adminId
+        }
+      });
+    }
+  }
+  console.log('Sample announcements created.');
 
   console.log('Seed data created successfully!');
 }

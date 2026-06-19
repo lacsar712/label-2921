@@ -101,6 +101,11 @@ const router = createRouter({
           name: 'Reviews',
           component: () => import('../views/Reviews.vue'),
         },
+        {
+          path: 'announcements',
+          name: 'Announcements',
+          component: () => import('../views/Announcements.vue'),
+        },
 
       ],
     },

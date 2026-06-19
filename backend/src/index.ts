@@ -20,6 +20,7 @@ import tagRoutes from './routes/tags';
 import authorRoutes from './routes/authors';
 import publisherRoutes from './routes/publishers';
 import reviewRoutes from './routes/reviews';
+import announcementRoutes from './routes/announcements';
 import logger from './utils/logger';
 import { exec } from 'child_process';
 
@@ -53,6 +54,7 @@ app.use('/tags', tagRoutes);
 app.use('/authors', authorRoutes);
 app.use('/publishers', publisherRoutes);
 app.use('/reviews', reviewRoutes);
+app.use('/announcements', announcementRoutes);
 
 // Error Handling
 app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
