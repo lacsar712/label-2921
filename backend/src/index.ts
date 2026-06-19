@@ -21,6 +21,7 @@ import authorRoutes from './routes/authors';
 import publisherRoutes from './routes/publishers';
 import reviewRoutes from './routes/reviews';
 import announcementRoutes from './routes/announcements';
+import stockTakeRoutes from './routes/stockTakes';
 import logger from './utils/logger';
 import { exec } from 'child_process';
 
@@ -55,6 +56,7 @@ app.use('/authors', authorRoutes);
 app.use('/publishers', publisherRoutes);
 app.use('/reviews', reviewRoutes);
 app.use('/announcements', announcementRoutes);
+app.use('/stock-takes', stockTakeRoutes);
 
 // Error Handling
 app.use((err: any, req: Request, res: Response, _next: NextFunction) => {

@@ -395,3 +395,91 @@ model Announcement {
   @@index([publishAt])
   @@index([expireAt])
 }
+
+enum StockTakeStatus {
+  DRAFT
+  IN_PROGRESS
+  PENDING_REVIEW
+  COMPLETED
+}
+
+enum DiffReason {
+  NORMAL
+  LOST
+  DAMAGED
+  MISPLACED
+  OTHER
+}
+
+model StockTake {
+  id                Int              @id @default(autoincrement())
+  title             String
+  status            StockTakeStatus @default(DRAFT)
+  totalBooks        Int              @default(0)
+  totalExpectedQty  Int              @default(0)
+  totalActualQty    Int              @default(0)
+  totalDiffQty      Int              @default(0)
+  totalDiffAmount   Float            @default(0)
+  categoryId        Int?
+  category          Category?        @relation(fields: [categoryId], references: [id])
+  remark            String?
+  createdById       Int?
+  createdBy         User?            @relation("StockTakeCreator", fields: [createdById], references: [id])
+  startedAt         DateTime?
+  submittedAt       DateTime?
+  reviewedById      Int?
+  reviewedBy        User?            @relation("StockTakeReviewer", fields: [reviewedById], references: [id])
+  reviewedAt        DateTime?
+  completedAt       DateTime?
+  items             StockTakeItem[]
+  statusLogs        StockTakeStatusLog[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([createdAt])
+}
+
+model StockTakeItem {
+  id             Int        @id @default(autoincrement())
+  stockTakeId    Int
+  stockTake      StockTake  @relation(fields: [stockTakeId], references: [id], onDelete: Cascade)
+  bookId         Int
+  book           Book       @relation(fields: [bookId], references: [id])
+  bookTitle      String
+  bookIsbn       String
+  bookPrice      Float
+  expectedStock  Int
+  actualStock    Int?
+  diffQty        Int        @default(0)
+  diffAmount     Float      @default(0)
+  diffReason     DiffReason?
+  locationRemark String?
+  isCounted      Boolean    @default(false)
+  countedById    Int?
+  countedBy      User?      @relation(fields: [countedById], references: [id])
+  countedAt      DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([stockTakeId])
+  @@index([bookId])
+  @@index([isCounted])
+  @@unique([stockTakeId, bookId])
+}
+
+model StockTakeStatusLog {
+  id          Int              @id @default(autoincrement())
+  stockTakeId Int
+  stockTake   StockTake        @relation(fields: [stockTakeId], references: [id], onDelete: Cascade)
+  fromStatus  StockTakeStatus?
+  toStatus    StockTakeStatus
+  operatorId  Int?
+  operator    User?            @relation(fields: [operatorId], references: [id])
+  remark      String?
+  createdAt   DateTime         @default(now())
+
+  @@index([stockTakeId])
+  @@index([toStatus])
+}

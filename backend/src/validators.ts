@@ -208,3 +208,44 @@ export const announcementQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).optional(),
   isPinned: z.coerce.boolean().optional(),
 });
+
+export const stockTakeSchema = z.object({
+  title: z.string().min(1, '盘点单标题必填'),
+  categoryId: z.number().int().optional().nullable(),
+  remark: z.string().optional(),
+});
+
+export const stockTakeUpdateSchema = stockTakeSchema.partial();
+
+export const stockTakeQuerySchema = z.object({
+  status: z.enum(['DRAFT', 'IN_PROGRESS', 'PENDING_REVIEW', 'COMPLETED']).optional(),
+  keyword: z.string().optional(),
+  month: z.string().optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+export const stockTakeItemSchema = z.object({
+  actualStock: z.number().int().min(0, '实盘数量不能为负数'),
+  diffReason: z.enum(['NORMAL', 'LOST', 'DAMAGED', 'MISPLACED', 'OTHER']).optional().nullable(),
+  locationRemark: z.string().optional(),
+});
+
+export const stockTakeItemBatchSchema = z.object({
+  items: z.array(z.object({
+    bookId: z.number().int(),
+    actualStock: z.number().int().min(0, '实盘数量不能为负数'),
+    diffReason: z.enum(['NORMAL', 'LOST', 'DAMAGED', 'MISPLACED', 'OTHER']).optional().nullable(),
+    locationRemark: z.string().optional(),
+  })),
+});
+
+export const stockTakeReviewSchema = z.object({
+  remark: z.string().optional(),
+});
+
+export const stockTakeTrendQuerySchema = z.object({
+  startMonth: z.string().min(1, '开始月份必填'),
+  endMonth: z.string().min(1, '结束月份必填'),
+  categoryId: z.coerce.number().int().optional(),
+});
