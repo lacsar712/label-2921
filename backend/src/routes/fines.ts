@@ -131,6 +131,30 @@ export const upsertFine = async (borrowRecordId: number) => {
   });
 };
 
+export const syncAllOverdueFines = async () => {
+  const settings = await getSettings();
+  const graceEndDate = new Date();
+  graceEndDate.setDate(graceEndDate.getDate() - settings.graceDays);
+
+  const overdueBorrows = await prisma.borrowRecord.findMany({
+    where: {
+      status: 'BORROWED',
+      dueDate: { lt: graceEndDate },
+    },
+    select: { id: true },
+  });
+
+  for (const b of overdueBorrows) {
+    try {
+      await upsertFine(b.id);
+    } catch (e) {
+      console.error(`Failed to upsert fine for borrow ${b.id}`, e);
+    }
+  }
+
+  return { syncedCount: overdueBorrows.length };
+};
+
 router.get('/settings', authenticate, async (_req, res) => {
   const settings = await getSettings();
   res.json(settings);
@@ -147,7 +171,16 @@ router.put('/settings', authenticate, async (req: AuthRequest, res) => {
 });
 
 router.get('/', authenticate, async (req: AuthRequest, res) => {
-  const { status, borrowerId, keyword } = req.query as any;
+  const { status, borrowerId, keyword, skipSync } = req.query as any;
+
+  if (skipSync !== 'true') {
+    try {
+      await syncAllOverdueFines();
+    } catch (e) {
+      console.error('Failed to sync fines on list query', e);
+    }
+  }
+
   const where: any = {};
 
   if (status) {
@@ -183,7 +216,17 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
   res.json(fines);
 });
 
-router.get('/stats', authenticate, async (_req: AuthRequest, res) => {
+router.get('/stats', authenticate, async (req: AuthRequest, res) => {
+  const { skipSync } = req.query as any;
+
+  if (skipSync !== 'true') {
+    try {
+      await syncAllOverdueFines();
+    } catch (e) {
+      console.error('Failed to sync fines on stats query', e);
+    }
+  }
+
   const [pending, partial, paid, waived] = await Promise.all([
     prisma.fine.count({ where: { status: FineStatus.PENDING } }),
     prisma.fine.count({ where: { status: FineStatus.PARTIAL } }),
@@ -218,10 +261,27 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   res.json(fine);
 });
 
+router.post('/refresh-all', authenticate, async (_req: AuthRequest, res) => {
+  try {
+    const result = await syncAllOverdueFines();
+    res.json({ message: `已同步 ${result.syncedCount} 条逾期罚金记录', syncedCount: result.syncedCount });
+  } catch (error) {
+    res.status(500).json({ message: '同步失败', error: (error as any).message });
+  }
+});
+
 router.post('/:id/recalculate', authenticate, async (req: AuthRequest, res) => {
-  const fine = await upsertFine(Number(req.params.id));
+  const fineId = Number(req.params.id);
+  const existing = await prisma.fine.findUnique({
+    where: { id: fineId },
+    select: { borrowRecordId: true },
+  });
+  if (!existing) {
+    return res.status(404).json({ message: '罚金记录不存在' });
+  }
+  const fine = await upsertFine(existing.borrowRecordId);
   if (!fine) {
-    return res.status(404).json({ message: '罚金记录不存在或无需计算' });
+    return res.status(404).json({ message: '无需计算罚金' });
   }
   res.json(fine);
 });
