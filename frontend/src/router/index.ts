@@ -36,6 +36,16 @@ const router = createRouter({
           component: () => import('../views/Tags.vue'),
         },
         {
+          path: 'authors',
+          name: 'Authors',
+          component: () => import('../views/Authors.vue'),
+        },
+        {
+          path: 'authors/:id',
+          name: 'AuthorDetail',
+          component: () => import('../views/AuthorDetail.vue'),
+        },
+        {
           path: 'publishers',
           name: 'Publishers',
           component: () => import('../views/Publishers.vue'),

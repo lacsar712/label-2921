@@ -35,6 +35,10 @@
           <el-icon><PriceTag /></el-icon>
           <span>标签管理</span>
         </el-menu-item>
+        <el-menu-item index="/authors">
+          <el-icon><UserFilled /></el-icon>
+          <span>作者管理</span>
+        </el-menu-item>
         <el-menu-item index="/publishers">
           <el-icon><OfficeBuilding /></el-icon>
           <span>出版社管理</span>
@@ -154,6 +158,7 @@ import {
   Notebook,
   Collection,
   PriceTag,
+  UserFilled,
   User,
   Switch,
   Reading,
@@ -182,6 +187,7 @@ const currentRouteName = computed(() => {
     '/books': '图书管理',
     '/categories': '分类管理',
     '/tags': '标签管理',
+    '/authors': '作者管理',
     '/publishers': '出版社管理',
     '/borrowers': '借阅用户',
     '/borrows': '借阅历史',
@@ -198,6 +204,7 @@ const currentRouteName = computed(() => {
   };
   if (route.path.startsWith('/reading-rooms/')) return '阅览室详情';
   if (route.path.startsWith('/publishers/')) return '出版社详情';
+  if (route.path.startsWith('/authors/')) return '作者详情';
   return titles[route.path] || '首页';
 });
 

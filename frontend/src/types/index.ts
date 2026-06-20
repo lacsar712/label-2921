@@ -3,6 +3,53 @@ export interface Category {
   name: string;
 }
 
+export type AuthorStatus = 'ACTIVE' | 'DISABLED';
+
+export interface Author {
+  id: number;
+  name: string;
+  nationality?: string;
+  birthYear?: number;
+  deathYear?: number;
+  biography?: string;
+  representativeWorks?: string;
+  pinyinInitial?: string;
+  status: AuthorStatus;
+  createdAt: string;
+  updatedAt: string;
+  bookCount?: number;
+  _count?: { bookAuthors: number };
+}
+
+export interface AuthorBook {
+  id: number;
+  title: string;
+  isbn: string;
+  stock: number;
+  price: number;
+  category: string;
+  totalBorrows: number;
+  avgRating: number;
+  reviewCount: number;
+}
+
+export interface AuthorDetail extends Author {
+  books: AuthorBook[];
+  statistics: {
+    bookCount: number;
+    totalStock: number;
+    totalBorrows: number;
+    overallAvgRating: number;
+  };
+}
+
+export interface AuthorListResponse {
+  data: Author[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface Tag {
   id: number;
   name: string;
