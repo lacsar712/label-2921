@@ -90,36 +90,73 @@ const currentAnnouncement = ref<Announcement | null>(null);
 
 const renderMarkdown = (text: string): string => {
   if (!text) return '';
-  let html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
 
-  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+  const escapeHtml = (s: string): string =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  html = html.replace(/\*\*\*(.*)\*\*\*/gim, '<strong><em>$1</em></strong>');
-  html = html.replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>');
-  html = html.replace(/\*(.*)\*/gim, '<em>$1</em>');
+  const inlineMarkdown = (s: string): string => {
+    let r = escapeHtml(s);
+    r = r.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    r = r.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    r = r.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    r = r.replace(/`(.+?)`/g, '<code>$1</code>');
+    r = r.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+    return r;
+  };
 
-  html = html.replace(/`(.*?)`/gim, '<code>$1</code>');
+  const lines = text.split('\n');
+  const htmlParts: string[] = [];
+  let i = 0;
 
-  html = html.replace(/^- (.*$)/gim, '<li>$1</li>');
-  html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+  while (i < lines.length) {
+    const line = lines[i];
 
-  html = html.replace(
-    /\[([^\]]+)\]\(([^\)]+)\)/gim,
-    '<a href="$2" target="_blank">$1</a>'
-  );
+    if (/^#{1,6}\s/.test(line)) {
+      const level = line.match(/^(#{1,6})/)?.[1].length ?? 1;
+      const content = inlineMarkdown(line.replace(/^#{1,6}\s+/, ''));
+      htmlParts.push(`<h${level}>${content}</h${level}>`);
+      i++;
+    } else if (/^>\s/.test(line)) {
+      const quoteLines: string[] = [];
+      while (i < lines.length && /^>\s/.test(lines[i])) {
+        quoteLines.push(lines[i].replace(/^>\s?/, ''));
+        i++;
+      }
+      htmlParts.push(`<blockquote>${inlineMarkdown(quoteLines.join('<br>'))}</blockquote>`);
+    } else if (/^[-*+]\s/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*+]\s/.test(lines[i])) {
+        items.push(`<li>${inlineMarkdown(lines[i].replace(/^[-*+]\s+/, ''))}</li>`);
+        i++;
+      }
+      htmlParts.push(`<ul>${items.join('')}</ul>`);
+    } else if (/^\d+\.\s/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+        items.push(`<li>${inlineMarkdown(lines[i].replace(/^\d+\.\s+/, ''))}</li>`);
+        i++;
+      }
+      htmlParts.push(`<ol>${items.join('')}</ol>`);
+    } else if (line.trim() === '') {
+      i++;
+    } else {
+      const paraLines: string[] = [];
+      while (
+        i < lines.length &&
+        lines[i].trim() !== '' &&
+        !/^#{1,6}\s/.test(lines[i]) &&
+        !/^[-*+]\s/.test(lines[i]) &&
+        !/^\d+\.\s/.test(lines[i]) &&
+        !/^>\s/.test(lines[i])
+      ) {
+        paraLines.push(lines[i]);
+        i++;
+      }
+      htmlParts.push(`<p>${inlineMarkdown(paraLines.join('<br>'))}</p>`);
+    }
+  }
 
-  html = html.replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>');
-
-  html = html.replace(/\n\n/gim, '</p><p>');
-  html = html.replace(/\n/gim, '<br>');
-  html = '<p>' + html + '</p>';
-
-  return html;
+  return htmlParts.join('');
 };
 
 const renderedContent = computed(() => {

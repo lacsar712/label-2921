@@ -6,8 +6,20 @@ import { announcementSchema, announcementUpdateSchema, announcementQuerySchema }
 
 const router = Router();
 
+const autoArchiveExpired = async () => {
+  const now = new Date();
+  await prisma.announcement.updateMany({
+    where: {
+      status: AnnouncementStatus.PUBLISHED,
+      expireAt: { not: null, lte: now }
+    },
+    data: { status: AnnouncementStatus.ARCHIVED }
+  });
+};
+
 router.get('/active', authenticate, async (req: AuthRequest, res) => {
   try {
+    await autoArchiveExpired();
     const now = new Date();
     const userRole = req.user?.role;
 
@@ -66,6 +78,7 @@ router.get('/active', authenticate, async (req: AuthRequest, res) => {
 
 router.get('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req: AuthRequest, res) => {
   try {
+    await autoArchiveExpired();
     const query = announcementQuerySchema.parse(req.query);
     const page = query.page || 1;
     const pageSize = query.pageSize || 10;
@@ -126,6 +139,7 @@ router.get('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (re
 
 router.get('/:id', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
   try {
+    await autoArchiveExpired();
     const announcement = await prisma.announcement.findUnique({
       where: { id: Number(req.params.id) },
       include: {
