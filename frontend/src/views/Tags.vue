@@ -402,7 +402,7 @@ watch(
       const sourceIds = selectedTags.value
         .filter((t) => t.id !== newVal)
         .map((t) => t.id);
-      if (sourceIds.length >= 2) {
+      if (sourceIds.length >= 1) {
         try {
           const res: any = await api.post('/tags/merge/preview', {
             sourceTagIds: sourceIds,
@@ -426,8 +426,8 @@ const submitMerge = async () => {
     .filter((t) => t.id !== mergeForm.targetTagId)
     .map((t) => t.id);
 
-  if (sourceIds.length < 2) {
-    ElMessage.warning('至少需要2个源标签进行合并');
+  if (sourceIds.length < 1) {
+    ElMessage.warning('请选择至少1个源标签进行合并');
     return;
   }
 

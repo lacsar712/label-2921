@@ -58,7 +58,6 @@ router.get('/with-stats', async (req, res) => {
                   borrowDate: {
                     gte: thirtyDaysAgo,
                   },
-                  status: 'BORROWED',
                 },
               },
             },

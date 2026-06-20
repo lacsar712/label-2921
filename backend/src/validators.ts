@@ -129,7 +129,7 @@ export const bookTagSchema = z.object({
 });
 
 export const tagMergeSchema = z.object({
-  sourceTagIds: z.array(z.number().int()).min(2, '至少选择2个标签进行合并'),
+  sourceTagIds: z.array(z.number().int()).min(1, '至少选择1个源标签进行合并'),
   targetTagId: z.number().int(),
 });
 
