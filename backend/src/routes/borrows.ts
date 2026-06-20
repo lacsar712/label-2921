@@ -133,11 +133,6 @@ router.post('/:id/return', authenticate, async (req: AuthRequest, res) => {
         data: { status: 'RETURNED', returnDate },
       });
 
-      await tx.book.update({
-        where: { id: record.bookId },
-        data: { stock: { increment: 1 } },
-      });
-
       const pendingReservation = await tx.reservation.findFirst({
         where: {
           bookId: record.bookId,
@@ -166,6 +161,11 @@ router.post('/:id/return', authenticate, async (req: AuthRequest, res) => {
             operatorId: req.user?.id,
             remark: '图书归还，自动流转为待领取',
           },
+        });
+      } else {
+        await tx.book.update({
+          where: { id: record.bookId },
+          data: { stock: { increment: 1 } },
         });
       }
     });

@@ -181,11 +181,6 @@ router.post('/:id/pickup', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN])
       return res.status(400).json({ message: '当前状态不可领取' });
     }
 
-    const book = await prisma.book.findUnique({ where: { id: reservation.bookId } });
-    if (!book || book.stock <= 0) {
-      return res.status(400).json({ message: '图书库存不足，无法领取' });
-    }
-
     const maxDays = await getMaxBorrowDays();
     const borrowDate = new Date();
     const dueDate = new Date();
@@ -221,11 +216,6 @@ router.post('/:id/pickup', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN])
         include: { book: true, borrower: true }
       });
 
-      await tx.book.update({
-        where: { id: reservation.bookId },
-        data: { stock: { decrement: 1 } }
-      });
-
       return borrowRecord;
     });
 
@@ -251,7 +241,7 @@ router.post('/:id/cancel', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN])
     }
 
     const fromStatus = reservation.status;
-    const returnToStock = fromStatus === ReservationStatus.PENDING_PICKUP;
+    const isPendingPickup = fromStatus === ReservationStatus.PENDING_PICKUP;
 
     await prisma.$transaction(async (tx) => {
       await tx.reservation.update({
@@ -272,7 +262,7 @@ router.post('/:id/cancel', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN])
         }
       });
 
-      if (returnToStock) {
+      if (isPendingPickup) {
         const pendingReservation = await tx.reservation.findFirst({
           where: {
             bookId: reservation.bookId,
@@ -301,6 +291,11 @@ router.post('/:id/cancel', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN])
               operatorId: req.user?.id,
               remark: '图书归还，自动流转为待领取'
             }
+          });
+        } else {
+          await tx.book.update({
+            where: { id: reservation.bookId },
+            data: { stock: { increment: 1 } }
           });
         }
       }
@@ -371,6 +366,11 @@ router.post('/:id/expire', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN])
             operatorId: req.user?.id,
             remark: '图书归还，自动流转为待领取'
           }
+        });
+      } else {
+        await tx.book.update({
+          where: { id: reservation.bookId },
+          data: { stock: { increment: 1 } }
         });
       }
     });
