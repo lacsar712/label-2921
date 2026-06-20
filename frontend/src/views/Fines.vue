@@ -534,11 +534,12 @@ const resetPayForm = () => {
 
 const handlePay = async () => {
   if (!payFormRef.value || !currentFine.value) return;
+  const fine = currentFine.value;
   await payFormRef.value.validate(async (valid) => {
     if (!valid) return;
     paySubmitting.value = true;
     try {
-      await api.post(`/fines/${currentFine.value.id}/pay`, payForm);
+      await api.post(`/fines/${fine.id}/pay`, payForm);
       ElMessage.success('收款登记成功');
       payDialogVisible.value = false;
       fetchFines();
@@ -564,11 +565,12 @@ const resetWaiveForm = () => {
 
 const handleWaive = async () => {
   if (!waiveFormRef.value || !currentFine.value) return;
+  const fine = currentFine.value;
   await waiveFormRef.value.validate(async (valid) => {
     if (!valid) return;
     waiveSubmitting.value = true;
     try {
-      await api.post(`/fines/${currentFine.value.id}/waive`, waiveForm);
+      await api.post(`/fines/${fine.id}/waive`, waiveForm);
       ElMessage.success('减免审批成功');
       waiveDialogVisible.value = false;
       fetchFines();

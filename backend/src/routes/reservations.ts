@@ -6,6 +6,15 @@ import { reservationSchema, reservationStatusSchema } from '../validators';
 
 const router = Router();
 
+const DEFAULT_MAX_BORROW_DAYS = 30;
+
+const getMaxBorrowDays = async () => {
+  const setting = await prisma.systemSettings.findUnique({
+    where: { key: 'maxBorrowDays' },
+  });
+  return setting ? parseInt(setting.value) : DEFAULT_MAX_BORROW_DAYS;
+};
+
 const getQueueInfo = async (bookId: number, reservationId: number) => {
   const pendingCount = await prisma.reservation.count({
     where: {
@@ -177,6 +186,11 @@ router.post('/:id/pickup', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN])
       return res.status(400).json({ message: '图书库存不足，无法领取' });
     }
 
+    const maxDays = await getMaxBorrowDays();
+    const borrowDate = new Date();
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + maxDays);
+
     const result = await prisma.$transaction(async (tx) => {
       await tx.reservation.update({
         where: { id },
@@ -200,7 +214,9 @@ router.post('/:id/pickup', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN])
         data: {
           bookId: reservation.bookId,
           borrowerId: reservation.borrowerId,
-          status: 'BORROWED'
+          status: 'BORROWED',
+          borrowDate,
+          dueDate,
         },
         include: { book: true, borrower: true }
       });

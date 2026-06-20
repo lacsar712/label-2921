@@ -351,11 +351,12 @@ const handleEdit = () => {
 
 const submitEdit = async () => {
   if (!editFormRef.value || !publisher.value) return;
+  const pub = publisher.value;
   await editFormRef.value.validate(async (valid: boolean) => {
     if (valid) {
       editSubmitting.value = true;
       try {
-        await api.put(`/publishers/${publisher.value.id}`, editForm);
+        await api.put(`/publishers/${pub.id}`, editForm);
         ElMessage.success('更新成功');
         editDialogVisible.value = false;
         fetchDetail();

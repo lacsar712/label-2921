@@ -91,14 +91,14 @@ async function main() {
     'Vue 3', 'React', 'Node.js', 'TypeScript', 'Python', 'AI 编程', '算法', '设计模式', '微服务', 'Docker',
     '唐诗', '宋词', '明清小说', '世界文学', '中国历史', '古希腊文明', '文艺复兴', '现代艺术', '行为心理学', '宏观经济'
   ];
-  const authors = [
+  const authorNames = [
     '张三', '李四', '王五', '赵六', '钱七', '孙八', '周九', '吴十', 'Robert Smith', 'John Doe', 'Emily White'
   ];
 
   const booksData = [];
   for (let i = 1; i <= 100; i++) {
     const title = `${subjects[i % subjects.length]}${bookTitles[i % bookTitles.length]} Vol.${Math.floor(i / subjects.length) + 1}`;
-    const author = authors[i % authors.length];
+    const author = authorNames[i % authorNames.length];
     const category = categories[i % categories.length];
     const publisher = publishers[i % publishers.length];
     
@@ -135,7 +135,7 @@ async function main() {
     { name: 'Emily White', nationality: '法国', birthYear: 1985, deathYear: null, biography: '当代女性作家，龚古尔文学奖获得者。', representativeWorks: '《巴黎的冬天》', pinyinInitial: 'E' },
   ];
 
-  const authors = [];
+  const authorRecords = [];
   for (const authorData of authorsData) {
     try {
       const author = await prisma.author.upsert({
@@ -143,7 +143,7 @@ async function main() {
         update: {},
         create: authorData,
       });
-      authors.push(author);
+      authorRecords.push(author);
     } catch (e) {
       console.log(`Author ${authorData.name} exists, skipping`);
     }
@@ -155,77 +155,34 @@ async function main() {
   
   for (let i = 0; i < allBooksForAuthors.length; i++) {
     const book = allBooksForAuthors[i];
-    const authorIndex = i % authors.length;
+    const authorIndex = i % authorRecords.length;
     try {
       await prisma.bookAuthor.upsert({
         where: {
-          bookId_authorId: { bookId: book.id, authorId: authors[authorIndex].id },
+          bookId_authorId: { bookId: book.id, authorId: authorRecords[authorIndex].id },
         },
         update: {},
         create: {
           bookId: book.id,
-          authorId: authors[authorIndex].id,
+          authorId: authorRecords[authorIndex].id,
         },
       });
       
-      if (i % 7 === 0 && authorIndex + 1 < authors.length) {
+      if (i % 7 === 0 && authorIndex + 1 < authorRecords.length) {
         await prisma.bookAuthor.upsert({
           where: {
-            bookId_authorId: { bookId: book.id, authorId: authors[(authorIndex + 1) % authors.length].id },
+            bookId_authorId: { bookId: book.id, authorId: authorRecords[(authorIndex + 1) % authorRecords.length].id },
           },
           update: {},
           create: {
             bookId: book.id,
-            authorId: authors[(authorIndex + 1) % authors.length].id,
+            authorId: authorRecords[(authorIndex + 1) % authorRecords.length].id,
           },
         });
       }
     } catch (e) {
       // Ignore duplicates
     }
-  }
-
-  // Create Book Reviews
-  console.log('Generating book reviews...');
-  const booksForReviews = await prisma.book.findMany({ take: 40 });
-  const borrowersForReviews = await prisma.borrower.findMany();
-  const existingReviews = await prisma.bookReview.count();
-  
-  if (existingReviews === 0 && booksForReviews.length > 0 && borrowersForReviews.length > 0) {
-    const reviewsToCreate = [];
-    for (let i = 0; i < 80; i++) {
-      const book = booksForReviews[i % booksForReviews.length];
-      const borrower = borrowersForReviews[Math.floor(Math.random() * borrowersForReviews.length)];
-      
-      const exists = reviewsToCreate.find(
-        (r) => r.bookId === book.id && r.borrowerId === borrower.id,
-      );
-      if (exists) continue;
-      
-      const comments = [
-        '这本书内容丰富，值得一读！',
-        '作者文笔流畅，故事引人入胜。',
-        '专业知识扎实，受益匪浅。',
-        '观点独到，令人耳目一新。',
-        '适合入门者，讲解清晰。',
-        '装帧精美，纸质优良。',
-        '翻译准确，读起来很顺畅。',
-        '逻辑严密，论证有力。',
-      ];
-      
-      reviewsToCreate.push({
-        bookId: book.id,
-        borrowerId: borrower.id,
-        rating: Math.floor(Math.random() * 3) + 3, // 3-5 stars
-        comment: Math.random() > 0.3 ? comments[Math.floor(Math.random() * comments.length)] : null,
-      });
-    }
-    
-    await prisma.bookReview.createMany({
-      data: reviewsToCreate,
-      skipDuplicates: true,
-    });
-    console.log(`Created ${reviewsToCreate.length} book reviews.`);
   }
 
   // Create Tags
@@ -318,6 +275,43 @@ async function main() {
     });
   }
 
+  // Create Book Reviews (requires existing borrow records)
+  console.log('Generating book reviews...');
+  const existingReviews = await prisma.bookReview.count();
+  if (existingReviews === 0) {
+    const returnedBorrows = await prisma.borrowRecord.findMany({
+      where: { status: 'RETURNED' },
+      take: 80,
+    });
+
+    const comments = [
+      '这本书内容丰富，值得一读！',
+      '作者文笔流畅，故事引人入胜。',
+      '专业知识扎实，受益匪浅。',
+      '观点独到，令人耳目一新。',
+      '适合入门者，讲解清晰。',
+      '装帧精美，纸质优良。',
+      '翻译准确，读起来很顺畅。',
+      '逻辑严密，论证有力。',
+    ];
+
+    const reviewsToCreate = returnedBorrows.map((record) => ({
+      bookId: record.bookId,
+      borrowerId: record.borrowerId,
+      borrowRecordId: record.id,
+      rating: Math.floor(Math.random() * 3) + 3,
+      comment: Math.random() > 0.3 ? comments[Math.floor(Math.random() * comments.length)] : null,
+    }));
+
+    if (reviewsToCreate.length > 0) {
+      await prisma.bookReview.createMany({
+        data: reviewsToCreate,
+        skipDuplicates: true,
+      });
+      console.log(`Created ${reviewsToCreate.length} book reviews.`);
+    }
+  }
+
   console.log('Generating reading rooms, zones, and seats...');
   const existingRooms = await prisma.readingRoom.count();
   if (existingRooms === 0) {
@@ -376,7 +370,19 @@ async function main() {
 
   const existingSeatReservations = await prisma.seatReservation.count();
   if (existingSeatReservations === 0 && seats.length > 0 && borrowers.length > 0) {
-    const reservationsToCreate = [];
+    type SeatReservationSeed = {
+      seatId: number;
+      borrowerId: number;
+      date: Date;
+      timeSlot: TimeSlot;
+      status: SeatReservationStatus;
+      checkedInAt?: Date;
+      cancelledAt?: Date;
+      noShowAt?: Date;
+      releasedAt?: Date;
+    };
+
+    const reservationsToCreate: SeatReservationSeed[] = [];
     const timeSlots = Object.values(TimeSlot);
 
     for (let dayOffset = -1; dayOffset <= 1; dayOffset++) {
@@ -395,7 +401,7 @@ async function main() {
         );
         if (exists) continue;
 
-        let status = SeatReservationStatus.BOOKED;
+        let status: SeatReservationStatus = SeatReservationStatus.BOOKED;
         if (dayOffset < 0) {
           const rand = Math.random();
           if (rand < 0.4) status = SeatReservationStatus.CHECKED_IN;
@@ -407,7 +413,7 @@ async function main() {
           else if (Math.random() < 0.2) status = SeatReservationStatus.CANCELLED;
         }
 
-        const reservation: any = {
+        const reservation: SeatReservationSeed = {
           seatId: seat.id,
           borrowerId: borrower.id,
           date,

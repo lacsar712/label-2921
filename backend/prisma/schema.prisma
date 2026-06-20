@@ -34,24 +34,39 @@ model User {
   waivedFines             Fine[]                   @relation("WaivedFines")
   finePayments            FinePayment[]
   reservationStatusLogs   ReservationStatusLog[]
+  officialReplyReviews    BookReview[]
+  seatReservationOps      SeatReservation[]
+  announcements           Announcement[]
+  createdStockTakes       StockTake[]              @relation("StockTakeCreator")
+  reviewedStockTakes      StockTake[]              @relation("StockTakeReviewer")
+  countedStockTakeItems   StockTakeItem[]
+  stockTakeStatusLogs     StockTakeStatusLog[]
+  createdDonations        Donation[]               @relation("DonationCreator")
+  reviewedDonations       Donation[]               @relation("DonationReviewer")
+  stockedDonations        Donation[]               @relation("DonationStocker")
+  donationStatusLogs      DonationStatusLog[]
 }
 
 model Borrower {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  phone     String?
-  email     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  borrows   BorrowRecord[]
-  fines     Fine[]
-  reviews   BookReview[]
+  id               Int               @id @default(autoincrement())
+  name             String            @unique
+  phone            String?
+  email            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  borrows          BorrowRecord[]
+  fines            Fine[]
+  reviews          BookReview[]
+  reservations     Reservation[]
+  seatReservations SeatReservation[]
 }
 
 model Category {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
-  books Book[]
+  id            Int            @id @default(autoincrement())
+  name          String         @unique
+  books         Book[]
+  stockTakes    StockTake[]
+  donationBooks DonationBook[]
 }
 
 model Publisher {
@@ -159,10 +174,13 @@ model Book {
   publisher   Publisher? @relation(fields: [publisherId], references: [id])
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  borrows     BorrowRecord[]
-  bookTags    BookTag[]
-  bookAuthors BookAuthor[]
-  reviews     BookReview[]
+  borrows          BorrowRecord[]
+  bookTags         BookTag[]
+  bookAuthors      BookAuthor[]
+  reviews          BookReview[]
+  reservations     Reservation[]
+  stockTakeItems   StockTakeItem[]
+  donationBooks    DonationBook[]
 }
 
 model BorrowRecord {

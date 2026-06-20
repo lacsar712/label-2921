@@ -327,7 +327,7 @@
             <el-option
               v-for="b in borrowers"
               :key="b.id"
-              :label="`${b.name} (${b.phone || ''})"
+              :label="`${b.name} (${b.phone || ''})`"
               :value="b.id"
             />
           </el-select>
@@ -351,7 +351,7 @@ import {
 import api from '../api';
 import type {
   ReadingRoom, ReadingZone, Seat, SeatBoardData, ReadingRoomStats,
-  TimeSlot, SeatReservationStatus, SeatReservation, Borrower
+  TimeSlot, Borrower, ZoneType
 } from '../types';
 import type { FormInstance, FormRules } from 'element-plus';
 
@@ -414,9 +414,14 @@ const reservationStatusTagType: Record<string, string> = {
 const zoneDialogVisible = ref(false);
 const editingZone = ref<ReadingZone | null>(null);
 const zoneFormRef = ref<FormInstance>();
-const zoneForm = ref({
+const zoneForm = ref<{
+  name: string;
+  type: ZoneType;
+  description: string;
+  readingRoomId: number;
+}>({
   name: '',
-  type: 'GENERAL' as const,
+  type: 'GENERAL',
   description: '',
   readingRoomId: 0,
 });
@@ -470,7 +475,8 @@ const fetchRoom = async () => {
 const fetchZones = async () => {
   zones.value = await api.get(`/reading-rooms/${roomId.value}/zones`);
   if (zones.value.length > 0 && !selectedZone.value) {
-    selectZone(zones.value[0]);
+    const firstZone = zones.value[0];
+    if (firstZone) selectZone(firstZone);
   }
 };
 
@@ -667,7 +673,7 @@ const openReservationDialog = (seat: Seat, slot: TimeSlot) => {
   reservationForm.value = {
     seatId: seat.id,
     borrowerId: 0,
-    date: selectedDate.value,
+    date: selectedDate.value ?? '',
     timeSlot: slot,
   };
   reservationDialogVisible.value = true;

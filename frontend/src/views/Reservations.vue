@@ -296,7 +296,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import api from '../api';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import type { Reservation, ReservationStatus } from '../types';
 
 const loading = ref(false);

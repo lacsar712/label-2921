@@ -27,7 +27,7 @@
             <el-option
               v-for="b in borrowers"
               :key="b.id"
-              :label="`${b.name} (${b.phone || ''})"
+              :label="`${b.name} (${b.phone || ''})`"
               :value="b.id"
             />
           </el-select>
@@ -111,8 +111,8 @@
         </el-table-column>
         <el-table-column label="状态" width="110">
           <template #default="{ row }">
-            <el-tag :type="statusTagType[row.status]" effect="dark">
-              {{ statusLabels[row.status] }}
+            <el-tag :type="statusTagType[row.status as SeatReservationStatus]" effect="dark">
+              {{ statusLabels[row.status as SeatReservationStatus] }}
             </el-tag>
           </template>
         </el-table-column>
@@ -245,7 +245,7 @@ const checkIn = async (row: SeatReservation) => {
 };
 
 const cancel = async (row: SeatReservation) => {
-  const { value: remark } = await ElMessageBox.prompt('请输入取消备注（可选）', '取消预约', {
+  const remark = await ElMessageBox.prompt('请输入取消备注（可选）', '取消预约', {
     confirmButtonText: '确定取消',
     cancelButtonText: '返回',
     inputPattern: /.*/,
@@ -259,7 +259,7 @@ const cancel = async (row: SeatReservation) => {
 };
 
 const markNoShow = async (row: SeatReservation) => {
-  const { value: remark } = await ElMessageBox.prompt('请输入爽约备注（可选）', '标记爽约', {
+  const remark = await ElMessageBox.prompt('请输入爽约备注（可选）', '标记爽约', {
     confirmButtonText: '确定标记',
     cancelButtonText: '返回',
     inputPattern: /.*/,
@@ -273,7 +273,7 @@ const markNoShow = async (row: SeatReservation) => {
 };
 
 const release = async (row: SeatReservation) => {
-  const { value: remark } = await ElMessageBox.prompt('请输入释放备注（可选）', '释放座位', {
+  const remark = await ElMessageBox.prompt('请输入释放备注（可选）', '释放座位', {
     confirmButtonText: '确定释放',
     cancelButtonText: '返回',
     inputPattern: /.*/,

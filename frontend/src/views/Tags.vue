@@ -205,7 +205,6 @@
           </el-tag>
         </div>
         <el-form
-          ref="mergeFormRef"
           :model="mergeForm"
           :rules="mergeRules"
           label-width="100px"
@@ -299,7 +298,6 @@ const editId = ref<number | null>(null);
 const mergeDialogVisible = ref(false);
 const mergeLoading = ref(false);
 const mergePreview = ref<any>(null);
-const mergeFormRef = ref<FormInstance | null>(null);
 const mergeForm = reactive({
   targetTagId: undefined as number | undefined,
 });

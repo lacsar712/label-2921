@@ -34,7 +34,7 @@
               <span>{{ room.openTime }} - {{ room.closeTime }}</span>
             </div>
             <div class="info-item">
-              <el-icon><Chair /></el-icon>
+              <el-icon><Grid /></el-icon>
               <span>{{ getTotalSeats(room) }}个座位 · {{ room.zones?.length || 0 }}个区域</span>
             </div>
           </div>
@@ -83,7 +83,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, OfficeBuilding, Location, Clock, Chair } from '@element-plus/icons-vue';
+import { Plus, OfficeBuilding, Location, Clock, Grid } from '@element-plus/icons-vue';
 import api from '../api';
 import type { ReadingRoom } from '../types';
 import type { FormInstance, FormRules } from 'element-plus';

@@ -281,6 +281,40 @@ router.get('/summary', authenticate, async (_req: AuthRequest, res) => {
   }
 });
 
+router.get('/edit-config', authenticate, async (_req: AuthRequest, res) => {
+  const editDays = await getReviewEditDays();
+  res.json({ editDays });
+});
+
+router.get('/borrower/:borrowerId/eligible', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const borrowerId = Number(req.params.borrowerId);
+
+    const returnedRecords = await prisma.borrowRecord.findMany({
+      where: {
+        borrowerId,
+        status: 'RETURNED',
+        review: null,
+      },
+      include: {
+        book: {
+          select: {
+            id: true,
+            title: true,
+            author: true,
+            isbn: true,
+          },
+        },
+      },
+      orderBy: { returnDate: 'desc' },
+    });
+
+    res.json(returnedRecords);
+  } catch (_error) {
+    res.status(400).json({ message: '获取可评价借阅记录失败' });
+  }
+});
+
 router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   const review = await prisma.bookReview.findUnique({
     where: { id: Number(req.params.id) },
@@ -351,40 +385,6 @@ router.post('/:id/reply', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]),
   } catch (_error) {
     res.status(400).json({ message: '回复评价失败', error: (_error as any).message });
   }
-});
-
-router.get('/borrower/:borrowerId/eligible', authenticate, async (req: AuthRequest, res) => {
-  try {
-    const borrowerId = Number(req.params.borrowerId);
-
-    const returnedRecords = await prisma.borrowRecord.findMany({
-      where: {
-        borrowerId,
-        status: 'RETURNED',
-        review: null,
-      },
-      include: {
-        book: {
-          select: {
-            id: true,
-            title: true,
-            author: true,
-            isbn: true,
-          },
-        },
-      },
-      orderBy: { returnDate: 'desc' },
-    });
-
-    res.json(returnedRecords);
-  } catch (_error) {
-    res.status(400).json({ message: '获取可评价借阅记录失败' });
-  }
-});
-
-router.get('/edit-config', authenticate, async (_req: AuthRequest, res) => {
-  const editDays = await getReviewEditDays();
-  res.json({ editDays });
 });
 
 export default router;

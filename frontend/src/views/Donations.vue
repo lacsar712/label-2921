@@ -539,7 +539,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { Search, Plus, Delete } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -549,7 +549,6 @@ import { useUserStore } from '../store/user';
 import type {
   Donation,
   DonationForm,
-  DonationBookForm,
   DonationStatus,
   BookCondition,
   DonationChannel,
@@ -824,7 +823,7 @@ const handleDetail = async (row: Donation) => {
   }
 };
 
-const goToBook = (bookId: number) => {
+const goToBook = (_bookId: number) => {
   router.push(`/books`);
 };
 
