@@ -168,6 +168,24 @@
               </template>
             </el-table-column>
             <el-table-column
+              label="来源"
+              width="130"
+            >
+              <template #default="{ row }">
+                <el-tooltip
+                  v-if="row.isDonation"
+                  :content="`捐赠来源：${row.donorName}${row.sourceDonationId ? `，捐赠单#${row.sourceDonationId}` : ''}`"
+                  placement="top"
+                >
+                  <el-tag type="warning" effect="dark" size="small">
+                    <el-icon style="margin-right: 3px"><Present /></el-icon>
+                    捐赠
+                  </el-tag>
+                </el-tooltip>
+                <span v-else class="text-grey">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column
               prop="price"
               label="价格"
               width="80"
@@ -727,7 +745,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue';
-import { Search, Plus, TrendCharts } from '@element-plus/icons-vue';
+import { Search, Plus, TrendCharts, Present } from '@element-plus/icons-vue';
 import api from '../api';
 import { useUserStore } from '../store/user';
 import { ElMessage, ElMessageBox } from 'element-plus';

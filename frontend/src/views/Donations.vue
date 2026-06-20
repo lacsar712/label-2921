@@ -422,13 +422,27 @@
         <el-table-column label="估价(元)" width="100" align="center">
           <template #default="{ row }">¥{{ row.estimatedValue.toFixed(2) }}</template>
         </el-table-column>
-        <el-table-column label="入库去向" width="150">
+        <el-table-column label="入库去向" width="180">
           <template #default="{ row }">
             <div v-if="row.bookId && row.book">
+              <div style="margin-bottom: 4px">
+                <el-tag
+                  v-if="row.book.isDonation"
+                  type="warning"
+                  effect="dark"
+                  size="small"
+                >
+                  <el-icon style="margin-right: 2px"><Present /></el-icon>
+                  捐赠
+                </el-tag>
+              </div>
               <el-link type="primary" @click="goToBook(row.bookId)">
                 {{ row.book.title }}
               </el-link>
               <div class="sub-text">库存: {{ row.book.stock }}册</div>
+              <div v-if="row.book.donorName" class="sub-text">
+                捐赠人: {{ row.book.donorName }}
+              </div>
             </div>
             <span v-else class="sub-text">未入库</span>
           </template>
@@ -525,6 +539,15 @@
             />
           </template>
         </el-table-column>
+        <el-table-column label="作者" min-width="140">
+          <template #default="{ row }">
+            <el-input
+              v-model="row._author"
+              placeholder="请输入作者"
+              size="small"
+            />
+          </template>
+        </el-table-column>
       </el-table>
       <template #footer>
         <el-button @click="stockInDialogVisible = false">
@@ -540,7 +563,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { Search, Plus, Delete } from '@element-plus/icons-vue';
+import { Search, Plus, Delete, Present } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance } from 'element-plus';
@@ -601,6 +624,7 @@ const currentDonation = ref<Donation | null>(null);
 const stockInDialogVisible = ref(false);
 const stockInLoading = ref(false);
 const stockInItems = ref<any[]>([]);
+const selectedStockInItems = ref<any[]>([]);
 
 const fetchCategories = async () => {
   try {
@@ -835,7 +859,9 @@ const handleStockIn = async (row: Donation) => {
       _stockQty: item.quantity - item.stockedQty,
       _categoryId: item.categoryId || (categories.value[0]?.id || null),
       _price: item.estimatedValue,
+      _author: '',
     }));
+    selectedStockInItems.value = [];
     stockInDialogVisible.value = true;
   } catch (error) {
     ElMessage.error('获取入库信息失败');
@@ -847,24 +873,32 @@ const checkStockInSelectable = (row: any) => {
 };
 
 const handleStockInSelection = (selection: any[]) => {
-  console.log('selection', selection);
+  selectedStockInItems.value = selection;
 };
 
 const submitStockIn = async () => {
-  if (!currentDonationId.value && stockInItems.value.length === 0) return;
+  if (stockInItems.value.length === 0) return;
+
+  const selectedItemIds = new Set(selectedStockInItems.value.map((item) => item.id));
 
   const stockInData = stockInItems.value
-    .filter((item) => item._stockQty > 0 && item._categoryId)
+    .filter(
+      (item) =>
+        selectedItemIds.has(item.id) &&
+        item._stockQty > 0 &&
+        item._categoryId
+    )
     .map((item) => ({
       itemId: item.id,
       bookId: item.bookId || undefined,
       categoryId: item._categoryId,
       quantity: item._stockQty,
       price: item._price,
+      author: item._author || undefined,
     }));
 
   if (stockInData.length === 0) {
-    ElMessage.warning('请选择要入库的图书并设置分类和数量');
+    ElMessage.warning('请勾选要入库的图书并设置分类和数量');
     return;
   }
 

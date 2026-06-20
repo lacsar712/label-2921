@@ -75,6 +75,10 @@ export interface Book {
   category: Category;
   publisherId?: number;
   publisher?: Publisher;
+  isDonation: boolean;
+  sourceDonationId?: number;
+  donorName?: string;
+  donationChannel?: string;
   tags?: Tag[];
   createdAt: string;
   updatedAt: string;

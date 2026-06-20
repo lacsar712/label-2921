@@ -344,6 +344,8 @@ router.post('/:id/stock-in', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN
       return res.status(400).json({ message: '只有已审核或部分入库状态的捐赠单可以入库' });
     }
 
+    const donationInfo = existingDonation;
+
     const result = await prisma.$transaction(async (tx) => {
       for (const stockItem of payload.items) {
         const donationItem = await tx.donationBook.findUnique({
@@ -371,26 +373,52 @@ router.post('/:id/stock-in', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN
           }
         }
 
+        const donationSourceDescription = `捐赠来源：${donationInfo.donorName}${donationInfo.donorUnit ? `（${donationInfo.donorUnit}）` : ''}，捐赠单编号：${donationId}`;
+
         if (!bookId) {
           const newBook = await tx.book.create({
             data: {
               title: donationItem.title,
-              author: stockItem.author || '未知',
+              author: stockItem.author || '未知捐赠作者',
               isbn: isbn || `DONATION-${donationId}-${stockItem.itemId}`,
               categoryId: stockItem.categoryId,
               publisherId: stockItem.publisherId || undefined,
               price: stockItem.price ?? donationItem.estimatedValue,
               stock: stockItem.quantity,
-              description: donationItem.remark || null,
+              description: donationItem.remark 
+                ? `${donationItem.remark}\n\n${donationSourceDescription}`
+                : donationSourceDescription,
+              isDonation: true,
+              sourceDonationId: donationId,
+              donorName: donationInfo.donorName,
+              donationChannel: donationInfo.channel,
             },
           });
           bookId = newBook.id;
         } else {
+          const existingBook = await tx.book.findUnique({
+            where: { id: bookId },
+          });
+          
+          const updateData: any = {
+            stock: { increment: stockItem.quantity },
+          };
+          
+          if (existingBook && !existingBook.isDonation) {
+            updateData.isDonation = true;
+            updateData.sourceDonationId = donationId;
+            updateData.donorName = donationInfo.donorName;
+            updateData.donationChannel = donationInfo.channel;
+            if (existingBook.description) {
+              updateData.description = `${existingBook.description}\n\n${donationSourceDescription}`;
+            } else {
+              updateData.description = donationSourceDescription;
+            }
+          }
+          
           await tx.book.update({
             where: { id: bookId },
-            data: {
-              stock: { increment: stockItem.quantity },
-            },
+            data: updateData,
           });
         }
 

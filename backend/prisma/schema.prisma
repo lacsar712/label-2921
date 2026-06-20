@@ -161,19 +161,24 @@ model BookTag {
 }
 
 model Book {
-  id          Int        @id @default(autoincrement())
-  title       String
-  author      String
-  isbn        String     @unique
-  stock       Int        @default(0)
-  price       Float
-  description String?
-  categoryId  Int
-  category    Category   @relation(fields: [categoryId], references: [id])
-  publisherId Int?
-  publisher   Publisher? @relation(fields: [publisherId], references: [id])
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id              Int        @id @default(autoincrement())
+  title           String
+  author          String
+  isbn            String     @unique
+  stock           Int        @default(0)
+  price           Float
+  description     String?
+  categoryId      Int
+  category        Category   @relation(fields: [categoryId], references: [id])
+  publisherId     Int?
+  publisher       Publisher? @relation(fields: [publisherId], references: [id])
+  isDonation      Boolean    @default(false)
+  sourceDonationId Int?
+  sourceDonation  Donation?  @relation("BookSourceDonation", fields: [sourceDonationId], references: [id])
+  donorName       String?
+  donationChannel String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
   borrows          BorrowRecord[]
   bookTags         BookTag[]
   bookAuthors      BookAuthor[]
@@ -181,6 +186,9 @@ model Book {
   reservations     Reservation[]
   stockTakeItems   StockTakeItem[]
   donationBooks    DonationBook[]
+
+  @@index([isDonation])
+  @@index([sourceDonationId])
 }
 
 model BorrowRecord {
@@ -549,6 +557,7 @@ model Donation {
   stockedAt      DateTime?
   items          DonationBook[]
   statusLogs     DonationStatusLog[]
+  sourcedBooks   Book[]           @relation("BookSourceDonation")
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
