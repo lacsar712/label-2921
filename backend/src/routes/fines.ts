@@ -264,7 +264,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
 router.post('/refresh-all', authenticate, async (_req: AuthRequest, res) => {
   try {
     const result = await syncAllOverdueFines();
-    res.json({ message: `已同步 ${result.syncedCount} 条逾期罚金记录', syncedCount: result.syncedCount });
+    res.json({ message: `已同步 ${result.syncedCount} 条逾期罚金记录`, syncedCount: result.syncedCount });
   } catch (error) {
     res.status(500).json({ message: '同步失败', error: (error as any).message });
   }

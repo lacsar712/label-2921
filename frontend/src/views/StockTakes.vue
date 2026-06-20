@@ -426,11 +426,11 @@ const handleReview = async (row: StockTake) => {
 
 const handleReject = async (row: StockTake) => {
   try {
-    const { value } = await ElMessageBox.prompt('请输入驳回原因', '驳回复核', {
+    const { value } = (await ElMessageBox.prompt('请输入驳回原因', '驳回复核', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       inputPlaceholder: '请输入驳回原因',
-    });
+    })) as { value: string };
     await api.post(`/stock-takes/${row.id}/reject`, { remark: value || '驳回复核' });
     ElMessage.success('已驳回');
     fetchStockTakes();

@@ -334,35 +334,36 @@ const renderMarkdown = (text: string): string => {
   };
 
   const lines = text.split('\n');
+  const lineAt = (idx: number): string => lines[idx] ?? '';
   const htmlParts: string[] = [];
   let i = 0;
 
   while (i < lines.length) {
-    const line = lines[i];
+    const line = lineAt(i);
 
     if (/^#{1,6}\s/.test(line)) {
-      const level = line.match(/^(#{1,6})/)?.[1].length ?? 1;
+      const level = line.match(/^(#{1,6})/)?.[1]?.length ?? 1;
       const content = inlineMarkdown(line.replace(/^#{1,6}\s+/, ''));
       htmlParts.push(`<h${level}>${content}</h${level}>`);
       i++;
     } else if (/^>\s/.test(line)) {
       const quoteLines: string[] = [];
-      while (i < lines.length && /^>\s/.test(lines[i])) {
-        quoteLines.push(lines[i].replace(/^>\s?/, ''));
+      while (i < lines.length && /^>\s/.test(lineAt(i))) {
+        quoteLines.push(lineAt(i).replace(/^>\s?/, ''));
         i++;
       }
       htmlParts.push(`<blockquote>${inlineMarkdown(quoteLines.join('<br>'))}</blockquote>`);
     } else if (/^[-*+]\s/.test(line)) {
       const items: string[] = [];
-      while (i < lines.length && /^[-*+]\s/.test(lines[i])) {
-        items.push(`<li>${inlineMarkdown(lines[i].replace(/^[-*+]\s+/, ''))}</li>`);
+      while (i < lines.length && /^[-*+]\s/.test(lineAt(i))) {
+        items.push(`<li>${inlineMarkdown(lineAt(i).replace(/^[-*+]\s+/, ''))}</li>`);
         i++;
       }
       htmlParts.push(`<ul>${items.join('')}</ul>`);
     } else if (/^\d+\.\s/.test(line)) {
       const items: string[] = [];
-      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
-        items.push(`<li>${inlineMarkdown(lines[i].replace(/^\d+\.\s+/, ''))}</li>`);
+      while (i < lines.length && /^\d+\.\s/.test(lineAt(i))) {
+        items.push(`<li>${inlineMarkdown(lineAt(i).replace(/^\d+\.\s+/, ''))}</li>`);
         i++;
       }
       htmlParts.push(`<ol>${items.join('')}</ol>`);
@@ -372,13 +373,13 @@ const renderMarkdown = (text: string): string => {
       const paraLines: string[] = [];
       while (
         i < lines.length &&
-        lines[i].trim() !== '' &&
-        !/^#{1,6}\s/.test(lines[i]) &&
-        !/^[-*+]\s/.test(lines[i]) &&
-        !/^\d+\.\s/.test(lines[i]) &&
-        !/^>\s/.test(lines[i])
+        lineAt(i).trim() !== '' &&
+        !/^#{1,6}\s/.test(lineAt(i)) &&
+        !/^[-*+]\s/.test(lineAt(i)) &&
+        !/^\d+\.\s/.test(lineAt(i)) &&
+        !/^>\s/.test(lineAt(i))
       ) {
-        paraLines.push(lines[i]);
+        paraLines.push(lineAt(i));
         i++;
       }
       htmlParts.push(`<p>${inlineMarkdown(paraLines.join('<br>'))}</p>`);
