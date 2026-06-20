@@ -341,7 +341,6 @@
             placeholder="请选择出版社"
             style="width: 100%"
             filterable
-            clearable
           >
             <el-option
               v-for="pub in publishers"
@@ -847,6 +846,7 @@ const rules = {
     { min: 5, message: 'ISBN 至少5位', trigger: 'blur' }
   ],
   categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
+  publisherId: [{ required: true, message: '请选择出版社', trigger: 'change' }],
   price: [{ validator: validateNumber, trigger: 'blur' }],
   stock: [{ validator: validateNumber, trigger: 'blur' }]
 };

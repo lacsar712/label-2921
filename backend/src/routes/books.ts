@@ -150,7 +150,7 @@ router.post('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (r
     const payload = bookSchema.parse({
       ...bookData,
       categoryId: Number(bookData.categoryId),
-      publisherId: publisherId ? Number(publisherId) : null,
+      publisherId: Number(publisherId),
       price: Number(bookData.price),
       stock: Number(bookData.stock),
     });
@@ -245,7 +245,7 @@ router.put('/:id', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async 
       price: bookData.price !== undefined ? Number(bookData.price) : undefined,
       stock: bookData.stock !== undefined ? Number(bookData.stock) : undefined,
       categoryId: bookData.categoryId !== undefined ? Number(bookData.categoryId) : undefined,
-      publisherId: publisherId !== undefined ? (publisherId ? Number(publisherId) : null) : undefined,
+      publisherId: publisherId !== undefined ? Number(publisherId) : undefined,
     });
 
     const tagIdsArray = Array.isArray(tagIds) ? tagIds.map(Number) : null;

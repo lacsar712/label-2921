@@ -16,7 +16,7 @@ export const bookSchema = z.object({
   author: z.string().min(1),
   isbn: z.string().min(5),
   categoryId: z.number().int(),
-  publisherId: z.number().int().optional().nullable(),
+  publisherId: z.number().int(),
   price: z.number().min(0),
   stock: z.number().int().min(0),
   description: z.string().optional(),
@@ -31,7 +31,10 @@ export const bookSchema = z.object({
   })).optional(),
 });
 
-export const bookUpdateSchema = bookSchema.partial().extend({ id: z.number().int().optional() });
+export const bookUpdateSchema = bookSchema.partial().extend({
+  id: z.number().int().optional(),
+  publisherId: z.number().int().optional(),
+});
 
 export const categorySchema = z.object({
   name: z.string().min(1),

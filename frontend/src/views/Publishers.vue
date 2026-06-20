@@ -331,8 +331,7 @@ const handleDelete = (row: Publisher) => {
       await api.delete(`/publishers/${row.id}`);
       ElMessage.success('删除成功');
       fetchPublishers();
-    } catch (error) {
-      ElMessage.error('删除失败');
+    } catch (_error) {
     }
   });
 };
