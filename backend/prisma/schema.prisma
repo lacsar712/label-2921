@@ -373,7 +373,7 @@ model SeatReservation {
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
 
-  @@unique([seatId, date, timeSlot])
+  @@index([seatId, date, timeSlot])
 }
 
 enum AnnouncementStatus {

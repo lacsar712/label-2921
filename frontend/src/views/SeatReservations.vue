@@ -141,13 +141,30 @@
         </el-table-column>
       </el-table>
     </el-card>
+
+    <el-dialog v-model="remarkDialogVisible" :title="dialogTitle" width="400px">
+      <el-form :model="remarkForm" label-width="80px">
+        <el-form-item label="备注">
+          <el-input
+            v-model="remarkForm.remark"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入备注（选填）"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="remarkDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitRemark">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { Search, Warning, Lightning, Sunny } from '@element-plus/icons-vue';
 import api from '../api';
 import type { SeatReservation, ReadingRoom, Borrower, TimeSlot, SeatReservationStatus } from '../types';
@@ -233,60 +250,62 @@ const resetFilters = () => {
   fetchReservations();
 };
 
-const checkIn = async (row: SeatReservation) => {
-  await ElMessageBox.confirm(`确定对用户"${row.borrower?.name}"进行签到吗？`, '确认签到', {
-    type: 'success',
-  });
-  try {
-    await api.post(`/seat-reservations/${row.id}/check-in`);
-    ElMessage.success('签到成功');
-    fetchReservations();
-  } catch (e) {}
+const remarkDialogVisible = ref(false);
+const dialogTitle = ref('');
+const submitting = ref(false);
+const remarkForm = reactive({
+  reservationId: 0,
+  action: '' as 'check-in' | 'cancel' | 'no-show' | 'release',
+  remark: '',
+});
+
+const checkIn = (row: SeatReservation) => {
+  dialogTitle.value = '签到确认';
+  remarkForm.reservationId = row.id;
+  remarkForm.action = 'check-in';
+  remarkForm.remark = '';
+  remarkDialogVisible.value = true;
 };
 
-const cancel = async (row: SeatReservation) => {
-  const remark = await ElMessageBox.prompt('请输入取消备注（可选）', '取消预约', {
-    confirmButtonText: '确定取消',
-    cancelButtonText: '返回',
-    inputPattern: /.*/,
-    inputValidator: () => true,
-  });
-  try {
-    await api.post(`/seat-reservations/${row.id}/cancel`, { remark });
-    ElMessage.success('取消成功');
-    fetchReservations();
-  } catch (e) {}
+const cancel = (row: SeatReservation) => {
+  dialogTitle.value = '取消预约';
+  remarkForm.reservationId = row.id;
+  remarkForm.action = 'cancel';
+  remarkForm.remark = '';
+  remarkDialogVisible.value = true;
 };
 
-const markNoShow = async (row: SeatReservation) => {
-  const remark = await ElMessageBox.prompt('请输入爽约备注（可选）', '标记爽约', {
-    confirmButtonText: '确定标记',
-    cancelButtonText: '返回',
-    inputPattern: /.*/,
-    inputValidator: () => true,
-  });
-  try {
-    await api.post(`/seat-reservations/${row.id}/no-show`, { remark });
-    ElMessage.success('已标记爽约');
-    fetchReservations();
-  } catch (e) {}
+const markNoShow = (row: SeatReservation) => {
+  dialogTitle.value = '标记爽约';
+  remarkForm.reservationId = row.id;
+  remarkForm.action = 'no-show';
+  remarkForm.remark = '';
+  remarkDialogVisible.value = true;
 };
 
-const release = async (row: SeatReservation) => {
-  const remark = await ElMessageBox.prompt('请输入释放备注（可选）', '释放座位', {
-    confirmButtonText: '确定释放',
-    cancelButtonText: '返回',
-    inputPattern: /.*/,
-    inputValidator: () => true,
-  });
+const release = (row: SeatReservation) => {
+  dialogTitle.value = '释放座位';
+  remarkForm.reservationId = row.id;
+  remarkForm.action = 'release';
+  remarkForm.remark = '';
+  remarkDialogVisible.value = true;
+};
+
+const submitRemark = async () => {
+  submitting.value = true;
   try {
-    await api.post(`/seat-reservations/${row.id}/release`, { remark });
-    ElMessage.success('释放成功');
+    const { reservationId, action, remark } = remarkForm;
+    await api.post(`/seat-reservations/${reservationId}/${action}`, { remark });
+    ElMessage.success('操作成功');
+    remarkDialogVisible.value = false;
     fetchReservations();
-  } catch (e) {}
+  } catch (e) {} finally {
+    submitting.value = false;
+  }
 };
 
 const batchNoShow = async () => {
+  const { ElMessageBox } = await import('element-plus');
   await ElMessageBox.confirm(
     '确定批量标记超过时段开始30分钟仍未签到的预约为爽约吗？',
     '批量标记爽约',

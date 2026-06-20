@@ -350,6 +350,7 @@ router.get('/:id/board', authenticate, async (req: AuthRequest, res) => {
     where: {
       seatId: { in: seatIds },
       date: { gte: targetDate, lt: nextDate },
+      status: { in: [SeatReservationStatus.BOOKED, SeatReservationStatus.CHECKED_IN] },
     },
     include: {
       borrower: { select: { id: true, name: true, phone: true } },
