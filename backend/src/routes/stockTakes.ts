@@ -53,6 +53,86 @@ const createStatusLog = async (
   });
 };
 
+router.get('/trend/summary', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
+  try {
+    const query = stockTakeTrendQuerySchema.parse(req.query);
+
+    const startDate = new Date(query.startMonth + '-01');
+    const endDate = new Date(query.endMonth + '-01');
+    endDate.setMonth(endDate.getMonth() + 1);
+
+    const where: any = {
+      status: StockTakeStatus.COMPLETED,
+      completedAt: {
+        gte: startDate,
+        lt: endDate,
+      },
+    };
+
+    if (query.categoryId) {
+      where.categoryId = query.categoryId;
+    }
+
+    const stockTakes = await prisma.stockTake.findMany({
+      where,
+      orderBy: { completedAt: 'asc' },
+      include: {
+        items: {
+          select: {
+            bookId: true,
+            expectedStock: true,
+            actualStock: true,
+            diffQty: true,
+            diffAmount: true,
+          },
+        },
+      },
+    });
+
+    const monthlyData: Record<string, {
+      month: string;
+      stockTakeCount: number;
+      totalBooks: number;
+      totalExpectedQty: number;
+      totalActualQty: number;
+      totalDiffQty: number;
+      totalDiffAmount: number;
+    }> = {};
+
+    for (const st of stockTakes) {
+      const monthKey = st.completedAt!.toISOString().slice(0, 7);
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = {
+          month: monthKey,
+          stockTakeCount: 0,
+          totalBooks: 0,
+          totalExpectedQty: 0,
+          totalActualQty: 0,
+          totalDiffQty: 0,
+          totalDiffAmount: 0,
+        };
+      }
+      monthlyData[monthKey].stockTakeCount++;
+      monthlyData[monthKey].totalBooks += st.totalBooks;
+      monthlyData[monthKey].totalExpectedQty += st.totalExpectedQty;
+      monthlyData[monthKey].totalActualQty += st.totalActualQty;
+      monthlyData[monthKey].totalDiffQty += st.totalDiffQty;
+      monthlyData[monthKey].totalDiffAmount += st.totalDiffAmount;
+    }
+
+    const trend = Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month));
+
+    res.json({
+      data: trend.map((item) => ({
+        ...item,
+        totalDiffAmount: parseFloat(item.totalDiffAmount.toFixed(2)),
+      })),
+    });
+  } catch (_error) {
+    res.status(500).json({ message: '获取库存波动趋势失败', error: (_error as any).message });
+  }
+});
+
 router.get('/', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req: AuthRequest, res) => {
   try {
     const query = stockTakeQuerySchema.parse(req.query);
@@ -180,6 +260,64 @@ router.get('/:id/items', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), 
     });
   } catch (_error) {
     res.status(500).json({ message: '获取盘点明细失败' });
+  }
+});
+
+router.get('/:id/diff-summary', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
+  try {
+    const stockTakeId = Number(req.params.id);
+
+    const stockTake = await prisma.stockTake.findUnique({
+      where: { id: stockTakeId },
+    });
+
+    if (!stockTake) {
+      return res.status(404).json({ message: '盘点单不存在' });
+    }
+
+    const items = await prisma.stockTakeItem.findMany({
+      where: { stockTakeId, isCounted: true },
+    });
+
+    const lossItems = items.filter((item) => item.diffQty < 0);
+    const gainItems = items.filter((item) => item.diffQty > 0);
+    const normalItems = items.filter((item) => item.diffQty === 0);
+
+    const lossTotalQty = lossItems.reduce((sum, item) => sum + Math.abs(item.diffQty), 0);
+    const gainTotalQty = gainItems.reduce((sum, item) => sum + item.diffQty, 0);
+    const lossTotalAmount = lossItems.reduce((sum, item) => sum + Math.abs(item.diffAmount), 0);
+    const gainTotalAmount = gainItems.reduce((sum, item) => sum + item.diffAmount, 0);
+
+    const reasonStats: Record<string, { count: number; qty: number; amount: number }> = {};
+    for (const reason of Object.values(DiffReason)) {
+      reasonStats[reason] = { count: 0, qty: 0, amount: 0 };
+    }
+
+    for (const item of lossItems) {
+      const reason = item.diffReason || DiffReason.OTHER;
+      reasonStats[reason].count++;
+      reasonStats[reason].qty += Math.abs(item.diffQty);
+      reasonStats[reason].amount += Math.abs(item.diffAmount);
+    }
+
+    res.json({
+      totalCounted: items.length,
+      normalCount: normalItems.length,
+      lossCount: lossItems.length,
+      gainCount: gainItems.length,
+      lossTotalQty,
+      gainTotalQty,
+      lossTotalAmount: parseFloat(lossTotalAmount.toFixed(2)),
+      gainTotalAmount: parseFloat(gainTotalAmount.toFixed(2)),
+      reasonStats: Object.entries(reasonStats).map(([reason, stats]) => ({
+        reason,
+        count: stats.count,
+        qty: stats.qty,
+        amount: parseFloat(stats.amount.toFixed(2)),
+      })),
+    });
+  } catch (_error) {
+    res.status(500).json({ message: '获取差异汇总失败' });
   }
 });
 
@@ -669,144 +807,6 @@ router.delete('/:id', authenticate, authorize([Role.ADMIN]), async (req, res) =>
     res.json({ message: '盘点单已删除' });
   } catch (_error) {
     res.status(400).json({ message: '删除盘点单失败' });
-  }
-});
-
-router.get('/trend/summary', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
-  try {
-    const query = stockTakeTrendQuerySchema.parse(req.query);
-
-    const startDate = new Date(query.startMonth + '-01');
-    const endDate = new Date(query.endMonth + '-01');
-    endDate.setMonth(endDate.getMonth() + 1);
-
-    const where: any = {
-      status: StockTakeStatus.COMPLETED,
-      completedAt: {
-        gte: startDate,
-        lt: endDate,
-      },
-    };
-
-    if (query.categoryId) {
-      where.categoryId = query.categoryId;
-    }
-
-    const stockTakes = await prisma.stockTake.findMany({
-      where,
-      orderBy: { completedAt: 'asc' },
-      include: {
-        items: {
-          select: {
-            bookId: true,
-            expectedStock: true,
-            actualStock: true,
-            diffQty: true,
-            diffAmount: true,
-          },
-        },
-      },
-    });
-
-    const monthlyData: Record<string, {
-      month: string;
-      stockTakeCount: number;
-      totalBooks: number;
-      totalExpectedQty: number;
-      totalActualQty: number;
-      totalDiffQty: number;
-      totalDiffAmount: number;
-    }> = {};
-
-    for (const st of stockTakes) {
-      const monthKey = st.completedAt!.toISOString().slice(0, 7);
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = {
-          month: monthKey,
-          stockTakeCount: 0,
-          totalBooks: 0,
-          totalExpectedQty: 0,
-          totalActualQty: 0,
-          totalDiffQty: 0,
-          totalDiffAmount: 0,
-        };
-      }
-      monthlyData[monthKey].stockTakeCount++;
-      monthlyData[monthKey].totalBooks += st.totalBooks;
-      monthlyData[monthKey].totalExpectedQty += st.totalExpectedQty;
-      monthlyData[monthKey].totalActualQty += st.totalActualQty;
-      monthlyData[monthKey].totalDiffQty += st.totalDiffQty;
-      monthlyData[monthKey].totalDiffAmount += st.totalDiffAmount;
-    }
-
-    const trend = Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month));
-
-    res.json({
-      data: trend.map((item) => ({
-        ...item,
-        totalDiffAmount: parseFloat(item.totalDiffAmount.toFixed(2)),
-      })),
-    });
-  } catch (_error) {
-    res.status(500).json({ message: '获取库存波动趋势失败', error: (_error as any).message });
-  }
-});
-
-router.get('/:id/diff-summary', authenticate, authorize([Role.ADMIN, Role.LIBRARIAN]), async (req, res) => {
-  try {
-    const stockTakeId = Number(req.params.id);
-
-    const stockTake = await prisma.stockTake.findUnique({
-      where: { id: stockTakeId },
-    });
-
-    if (!stockTake) {
-      return res.status(404).json({ message: '盘点单不存在' });
-    }
-
-    const items = await prisma.stockTakeItem.findMany({
-      where: { stockTakeId, isCounted: true },
-    });
-
-    const lossItems = items.filter((item) => item.diffQty < 0);
-    const gainItems = items.filter((item) => item.diffQty > 0);
-    const normalItems = items.filter((item) => item.diffQty === 0);
-
-    const lossTotalQty = lossItems.reduce((sum, item) => sum + Math.abs(item.diffQty), 0);
-    const gainTotalQty = gainItems.reduce((sum, item) => sum + item.diffQty, 0);
-    const lossTotalAmount = lossItems.reduce((sum, item) => sum + Math.abs(item.diffAmount), 0);
-    const gainTotalAmount = gainItems.reduce((sum, item) => sum + item.diffAmount, 0);
-
-    const reasonStats: Record<string, { count: number; qty: number; amount: number }> = {};
-    for (const reason of Object.values(DiffReason)) {
-      reasonStats[reason] = { count: 0, qty: 0, amount: 0 };
-    }
-
-    for (const item of lossItems) {
-      const reason = item.diffReason || DiffReason.OTHER;
-      reasonStats[reason].count++;
-      reasonStats[reason].qty += Math.abs(item.diffQty);
-      reasonStats[reason].amount += Math.abs(item.diffAmount);
-    }
-
-    res.json({
-      totalCounted: items.length,
-      normalCount: normalItems.length,
-      lossCount: lossItems.length,
-      gainCount: gainItems.length,
-      lossTotalQty,
-      gainTotalQty,
-      lossTotalAmount: parseFloat(lossTotalAmount.toFixed(2)),
-      gainTotalAmount: parseFloat(gainTotalAmount.toFixed(2)),
-      reasonStats: Object.entries(reasonStats).map(([reason, stats]) => ({
-        reason,
-        count: stats.count,
-        qty: stats.qty,
-        amount: parseFloat(stats.amount.toFixed(2)),
-      })),
-    });
-  } catch (_error) {
-    res.status(500).json({ message: '获取差异汇总失败' });
   }
 });
 

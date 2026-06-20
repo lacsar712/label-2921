@@ -87,6 +87,10 @@
           <el-icon><Present /></el-icon>
           <span>捐赠管理</span>
         </el-menu-item>
+        <el-menu-item index="/stock-takes">
+          <el-icon><Box /></el-icon>
+          <span>库存盘点</span>
+        </el-menu-item>
         <el-menu-item
           v-if="userStore.isAdmin"
           index="/system-settings"
@@ -172,7 +176,8 @@ import {
   Calendar,
   ChatDotSquare,
   Bell,
-  Present
+  Present,
+  Box
 } from '@element-plus/icons-vue';
 
 const route = useRoute();
@@ -200,11 +205,13 @@ const currentRouteName = computed(() => {
     '/reviews': '评价管理',
     '/announcements': '公告中心',
     '/donations': '捐赠管理',
+    '/stock-takes': '库存盘点',
     '/system-settings': '系统管理'
   };
   if (route.path.startsWith('/reading-rooms/')) return '阅览室详情';
   if (route.path.startsWith('/publishers/')) return '出版社详情';
   if (route.path.startsWith('/authors/')) return '作者详情';
+  if (route.path.startsWith('/stock-takes/')) return '盘点详情';
   return titles[route.path] || '首页';
 });
 

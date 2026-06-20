@@ -621,3 +621,116 @@ export interface DonationStockInItem {
 export interface DonationStockInForm {
   items: DonationStockInItem[];
 }
+
+export type StockTakeStatus = 'DRAFT' | 'IN_PROGRESS' | 'PENDING_REVIEW' | 'COMPLETED';
+export type DiffReason = 'NORMAL' | 'LOST' | 'DAMAGED' | 'MISPLACED' | 'OTHER';
+
+export interface StockTakeStatusLog {
+  id: number;
+  stockTakeId: number;
+  fromStatus?: StockTakeStatus;
+  toStatus: StockTakeStatus;
+  operatorId?: number;
+  operator?: {
+    id: number;
+    username: string;
+  };
+  remark?: string;
+  createdAt: string;
+}
+
+export interface StockTake {
+  id: number;
+  title: string;
+  status: StockTakeStatus;
+  totalBooks: number;
+  totalExpectedQty: number;
+  totalActualQty: number;
+  totalDiffQty: number;
+  totalDiffAmount: number;
+  categoryId?: number;
+  category?: Category;
+  remark?: string;
+  createdById?: number;
+  createdBy?: {
+    id: number;
+    username: string;
+  };
+  startedAt?: string;
+  submittedAt?: string;
+  reviewedById?: number;
+  reviewedBy?: {
+    id: number;
+    username: string;
+  };
+  reviewedAt?: string;
+  completedAt?: string;
+  statusLogs?: StockTakeStatusLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StockTakeItem {
+  id: number;
+  stockTakeId: number;
+  bookId: number;
+  bookTitle: string;
+  bookIsbn: string;
+  bookPrice: number;
+  expectedStock: number;
+  actualStock?: number;
+  diffQty: number;
+  diffAmount: number;
+  diffReason?: DiffReason;
+  locationRemark?: string;
+  isCounted: boolean;
+  countedById?: number;
+  countedBy?: {
+    id: number;
+    username: string;
+  };
+  countedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StockTakeListResponse {
+  data: StockTake[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface StockTakeItemListResponse {
+  data: StockTakeItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface StockTakeDiffSummary {
+  totalCounted: number;
+  normalCount: number;
+  lossCount: number;
+  gainCount: number;
+  lossTotalQty: number;
+  gainTotalQty: number;
+  lossTotalAmount: number;
+  gainTotalAmount: number;
+  reasonStats: Array<{
+    reason: DiffReason;
+    count: number;
+    qty: number;
+    amount: number;
+  }>;
+}
+
+export interface StockTakeTrendItem {
+  month: string;
+  stockTakeCount: number;
+  totalBooks: number;
+  totalExpectedQty: number;
+  totalActualQty: number;
+  totalDiffQty: number;
+  totalDiffAmount: number;
+}

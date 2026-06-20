@@ -121,6 +121,16 @@ const router = createRouter({
           name: 'Donations',
           component: () => import('../views/Donations.vue'),
         },
+        {
+          path: 'stock-takes',
+          name: 'StockTakes',
+          component: () => import('../views/StockTakes.vue'),
+        },
+        {
+          path: 'stock-takes/:id',
+          name: 'StockTakeDetail',
+          component: () => import('../views/StockTakeDetail.vue'),
+        },
 
       ],
     },
